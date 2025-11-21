@@ -1,0 +1,19 @@
+# Ambiente Virtual
+venv/
+env/
+.env
+
+# Python e Django
+*.pyc
+__pycache__/
+db.sqlite3
+*.log
+
+# Mídia (Geralmente não enviamos fotos de teste de clientes reais)
+media/
+!media/.gitkeep
+
+# VS Code e Sistema
+.vscode/
+.idea/
+.DS_Store

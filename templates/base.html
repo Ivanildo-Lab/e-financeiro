@@ -1,0 +1,111 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Financeiro SaaS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome (Para os ícones do AdminLTE) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Ajustes finos para imitar AdminLTE */
+        .skin-blue-header { background-color: #3c8dbc; }
+        .skin-blue-logo { background-color: #367fa9; }
+        .skin-blue-sidebar { background-color: #222d32; }
+        .sidebar-hover:hover { background-color: #1e282c; border-left: 3px solid #3c8dbc; }
+        .content-wrapper { background-color: #ecf0f5; }
+    </style>
+</head>
+<body class="font-sans antialiased h-screen flex overflow-hidden bg-gray-100">
+
+    <!-- Sidebar (Menu Lateral) -->
+    <aside class="w-64 skin-blue-sidebar text-white flex flex-col shadow-xl transition-all duration-300 hidden md:flex">
+        <!-- Logo Area -->
+        <div class="h-14 skin-blue-logo flex items-center justify-center font-bold text-xl tracking-wider uppercase">
+            <span class="mr-2"><i class="fa fa-leaf"></i></span> e-Financeiro
+        </div>
+
+        <!-- User Panel -->
+        <div class="p-4 flex items-center space-x-3 border-b border-gray-700">
+            <div class="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white font-bold">
+                {{ user.username|slice:":1"|upper }}
+            </div>
+            <div>
+                <p class="font-semibold text-sm">{{ user.first_name|default:user.username }}</p>
+                <div class="text-xs text-green-400"><i class="fa fa-circle text-[10px]"></i> Online</div>
+            </div>
+        </div>
+
+        <!-- Menu -->
+        <nav class="flex-1 overflow-y-auto py-4 text-sm">
+            <p class="px-4 text-xs text-gray-500 uppercase font-semibold mb-2">Navegação Principal</p>
+            <ul class="space-y-0">
+                <li>
+                    <a href="#" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all">
+                        <i class="fa fa-dashboard w-6 text-center"></i>
+                        <span class="ml-2">Dashboard</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="{% url 'lista_cadastros' %}" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all {% if '/cadastros/' in request.path %}bg-black/20 border-l-4 border-blue-400 text-white{% endif %}">
+                        <i class="fa fa-users w-6 text-center"></i>
+                        <span class="ml-2">Cadastros</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="#" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all">
+                        <i class="fa fa-money-bill w-6 text-center"></i>
+                        <span class="ml-2">Financeiro</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Layout Principal -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Header Topo -->
+        <header class="skin-blue-header h-14 flex items-center justify-between px-4 shadow text-white">
+            <button class="md:hidden text-white"><i class="fa fa-bars"></i></button>
+            <div class="flex-1"></div> <!-- Espaçador -->
+            
+            <div class="flex items-center space-x-4">
+                <span class="text-sm hidden md:block">{{ user.empresa.nome|default:"Sem Empresa" }}</span>
+                <div class="relative group">
+                    <button class="flex items-center focus:outline-none">
+                        <span class="mr-2">{{ user.username }}</span>
+                        <i class="fa fa-angle-down"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Conteúdo (Content Wrapper) -->
+        <main class="flex-1 content-wrapper overflow-auto p-6">
+            <!-- Título da Página (Breadcrumb estilo AdminLTE) -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-semibold text-gray-800">
+                        {% block titulo_cabecalho %}Painel{% endblock %}
+                    </h1>
+                    <small class="text-gray-500">{% block subtitulo_cabecalho %}Visão Geral{% endblock %}</small>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <i class="fa fa-dashboard"></i> Home > {% block breadcrumb %}Atual{% endblock %}
+                </div>
+            </div>
+
+            {% block content %}
+            <!-- Conteúdo aqui -->
+            {% endblock %}
+        </main>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Financeiro | Bem-vindo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="font-sans antialiased text-gray-800">
+
+    <!-- Navbar Transparente -->
+    <nav class="absolute top-0 w-full z-50 px-6 py-4 flex justify-between items-center">
+        <div class="font-bold text-2xl text-white tracking-wider flex items-center shadow-sm">
+            {% if user.is_authenticated and user.empresa.logo %}
+                <img src="{{ user.empresa.logo.url }}" class="h-10 mr-2 rounded bg-white p-1">
+            {% else %}
+                <i class="fa fa-wallet mr-2"></i>
+            {% endif %}
+            
+            {% if user.is_authenticated %}
+                {{ user.empresa.nome }}
+            {% else %}
+                e-Financeiro
+            {% endif %}
+        </div>
+        
+        <div class="space-x-4">
+            {% if user.is_authenticated %}
+                <span class="text-white font-medium hidden sm:inline text-shadow">Olá, {{ user.first_name|default:user.username }}</span>
+                <a href="{% url 'dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-bold transition shadow-lg">
+                    Acessar Dashboard
+                </a>
+                <a href="{% url 'admin:logout' %}" class="text-white hover:text-gray-200 px-3 py-2 font-medium shadow-sm">Sair</a>
+            {% else %}
+                <a href="{% url 'admin:login' %}" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-bold transition shadow-lg">
+                    Login
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Hero Section (Banner Dinâmico) -->
+    <div class="relative h-screen flex items-center justify-center bg-cover bg-center"
+         style="background-image: url('{% if user.is_authenticated and user.empresa.banner %}{{ user.empresa.banner.url }}{% else %}https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1920&auto=format&fit=crop{% endif %}');">
+        
+        <!-- Overlay Escuro -->
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+
+        <!-- Conteúdo Central -->
+        <div class="relative z-10 text-center px-4 max-w-3xl mx-auto text-white">
+            {% if user.is_authenticated %}
+                <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">
+                    Gestão completa para <br><span class="text-blue-400">{{ user.empresa.nome }}</span>
+                </h1>
+                <p class="text-xl md:text-2xl mb-8 text-gray-200">
+                    Acompanhe cadastros, finanças e relatórios em um só lugar.
+                </p>
+                <a href="{% url 'dashboard' %}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded shadow-lg transform hover:-translate-y-1 transition">
+                    <i class="fa fa-tachometer-alt mr-2"></i> Ir para o Painel
+                </a>
+            {% else %}
+                <h1 class="text-4xl md:text-6xl font-bold mb-4">
+                    e-Financeiro SaaS
+                </h1>
+                <p class="text-xl md:text-2xl mb-8 text-gray-200">
+                    A plataforma multiempresa definitiva para gestão de clientes e controle financeiro.
+                </p>
+                <div class="space-x-4">
+                    <a href="{% url 'admin:login' %}" class="inline-block bg-white text-gray-900 hover:bg-gray-100 text-lg px-8 py-3 rounded font-bold transition">
+                        Entrar Agora
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Footerzinho -->
+        <div class="absolute bottom-4 text-center w-full text-gray-400 text-sm">
+            &copy; {% now "Y" %} e-Financeiro System. Todos os direitos reservados.
+        </div>
+    </div>
+
+</body>
+</html>
