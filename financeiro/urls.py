@@ -14,9 +14,9 @@ urlpatterns = [
     # RELATÓRIO
     path('fluxo/relatorio/', views.relatorio_fluxo, name='relatorio_fluxo'),
     path('contas/relatorio/', views.relatorio_contas, name='relatorio_contas'),
-
-
-    
+    path('relatorios/dre/', views.relatorio_dre, name='relatorio_dre'),
+    path('relatorios/dre/sintetico/', views.relatorio_dre_sintetico, name='relatorio_dre_sintetico'),
+        
     # RECEBER (NOVO)
     path('contas/receber/', views.lista_contas_receber, name='lista_receber'),
     path('contas/receber/nova/', views.nova_receita, name='nova_receita'), # Atalho para criar

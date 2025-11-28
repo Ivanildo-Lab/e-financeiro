@@ -575,3 +575,126 @@ def relatorio_contas(request):
         'data_fim': parse_date(data_fim) if data_fim else None,
         'status_filtro': status
     })
+
+@login_required
+def relatorio_dre(request):
+    # 1. Filtros de Data
+    hoje = date.today()
+    inicio_ano = hoje.replace(month=1, day=1)
+    
+    data_inicio_str = request.GET.get('data_inicio') or inicio_ano.strftime('%Y-%m-%d')
+    data_fim_str = request.GET.get('data_fim') or hoje.strftime('%Y-%m-%d')
+    
+    data_inicio = parse_date(data_inicio_str)
+    data_fim = parse_date(data_fim_str)
+
+    # 2. Busca Lançamentos
+    lancamentos = Lancamento.objects.filter(
+        empresa=request.user.empresa,
+        data_lancamento__range=[data_inicio_str, data_fim_str],
+        plano_de_contas__isnull=False
+    )
+
+    # 3. Agrupamento (Total por Categoria)
+    from django.db.models import Sum
+    
+    # Receitas
+    receitas = lancamentos.filter(tipo='C').values(
+        'plano_de_contas__codigo', 'plano_de_contas__nome'
+    ).annotate(total=Sum('valor')).order_by('plano_de_contas__codigo')
+
+    total_receitas = lancamentos.filter(tipo='C').aggregate(Sum('valor'))['valor__sum'] or 0
+
+    # Despesas
+    despesas = lancamentos.filter(tipo='D').values(
+        'plano_de_contas__codigo', 'plano_de_contas__nome'
+    ).annotate(total=Sum('valor')).order_by('plano_de_contas__codigo')
+
+    total_despesas = lancamentos.filter(tipo='D').aggregate(Sum('valor'))['valor__sum'] or 0
+
+    # 4. Resultado (Lucro ou Prejuízo)
+    resultado = total_receitas + total_despesas
+
+    return render(request, 'financeiro/relatorio_dre.html', {
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'receitas': receitas,
+        'despesas': despesas,
+        'total_receitas': total_receitas,
+        'total_despesas': total_despesas,
+        'resultado': resultado,
+        'empresa': request.user.empresa,
+    })
+
+@login_required
+def relatorio_dre_sintetico(request):
+    # 1. Filtros
+    hoje = date.today()
+    inicio_ano = hoje.replace(month=1, day=1)
+    
+    data_inicio_str = request.GET.get('data_inicio') or inicio_ano.strftime('%Y-%m-%d')
+    data_fim_str = request.GET.get('data_fim') or hoje.strftime('%Y-%m-%d')
+    
+    data_inicio = parse_date(data_inicio_str)
+    data_fim = parse_date(data_fim_str)
+
+    # 2. Busca
+    lancamentos = Lancamento.objects.filter(
+        empresa=request.user.empresa,
+        data_lancamento__range=[data_inicio_str, data_fim_str],
+        plano_de_contas__isnull=False
+    )
+
+    # 3. Agrupamento Manual (Soma por Código Pai)
+    grupos_receitas = {}
+    grupos_despesas = {}
+
+    total_rec = 0
+    total_desp = 0
+
+    for l in lancamentos:
+        # Pega o primeiro nível do código (ex: '01.02.001' -> pega '01')
+        # Se seu código não usa ponto (ex: 101001), ajuste o slice (ex: l.plano_de_contas.codigo[:2])
+        codigo_pai = l.plano_de_contas.codigo.split('.')[0] if '.' in l.plano_de_contas.codigo else l.plano_de_contas.codigo[:2]
+        
+        # Garante um fallback se o código for vazio
+        if not codigo_pai: 
+            codigo_pai = 'OUTROS'
+
+        # Lógica para Receitas (C)
+        if l.tipo == 'C':
+            if codigo_pai not in grupos_receitas:
+                nome_pai_obj = PlanoDeContas.objects.filter(empresa=request.user.empresa, codigo=codigo_pai).first()
+                nome_grupo = nome_pai_obj.nome if nome_pai_obj else f'GRUPO {codigo_pai}'
+                grupos_receitas[codigo_pai] = {'nome': nome_grupo, 'total': 0}
+            
+            grupos_receitas[codigo_pai]['total'] += l.valor
+            total_rec += l.valor
+            
+        # Lógica para Despesas (D)
+        elif l.tipo == 'D':
+            if codigo_pai not in grupos_despesas:
+                nome_pai_obj = PlanoDeContas.objects.filter(empresa=request.user.empresa, codigo=codigo_pai).first()
+                nome_grupo = nome_pai_obj.nome if nome_pai_obj else f'GRUPO {codigo_pai}'
+                grupos_despesas[codigo_pai] = {'nome': nome_grupo, 'total': 0}
+            
+            grupos_despesas[codigo_pai]['total'] += l.valor # Soma valor negativo
+            total_desp += l.valor
+
+    # 4. Ordenação (Para aparecer 01, 02, 03 na ordem)
+    # Transforma dicionário em lista de tuplas ordenadas
+    receitas_ordenadas = dict(sorted(grupos_receitas.items()))
+    despesas_ordenadas = dict(sorted(grupos_despesas.items()))
+
+    resultado = total_rec + total_desp
+
+    return render(request, 'financeiro/relatorio_dre_sintetico.html', {
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'receitas': receitas_ordenadas,
+        'despesas': despesas_ordenadas,
+        'total_receitas': total_rec,
+        'total_despesas': total_desp,
+        'resultado': resultado,
+        'empresa': request.user.empresa,
+    })

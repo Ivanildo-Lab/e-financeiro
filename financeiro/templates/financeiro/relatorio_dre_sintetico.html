@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>DRE Sintético - {{ empresa.nome }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body { -webkit-print-color-adjust: exact; font-size: 9pt; }
+            .no-print { display: none !important; }
+            @page { margin: 1cm; }
+        }
+        body { font-family: 'Inter', sans-serif; font-size: 12px; }
+        .dotted-line { border-bottom: 1px dotted #ccc; }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 print:p-0 text-gray-900 font-sans">
+
+    <div class="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none print:w-full min-h-screen p-8">
+        
+        <!-- CABEÇALHO -->
+        <div class="text-center border-b-2 border-gray-800 pb-2 mb-4">
+            <h1 class="text-lg font-bold uppercase tracking-widest">{{ empresa.nome }}</h1>
+            <p class="text-xs text-gray-500 mb-1">CNPJ: {{ empresa.cnpj }}</p>
+            <h2 class="font-bold bg-gray-800 text-white py-1 mt-1 uppercase text-sm">DRE - Visão Sintética (Grupos)</h2>
+            <p class="text-xs mt-1 font-medium">Competência: {{ data_inicio|date:"d/m/Y" }} a {{ data_fim|date:"d/m/Y" }}</p>
+        </div>
+
+        <!-- FILTRO (Tela) -->
+        <div class="no-print mb-6 bg-gray-50 p-3 rounded border flex gap-4 items-end text-xs">
+            <form method="GET" class="flex gap-2 w-full items-end">
+                <div class="flex items-center gap-2">
+                    <span>De:</span>
+                    <input type="date" name="data_inicio" value="{{ data_inicio|date:'Y-m-d' }}" class="border p-1 rounded">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>Até:</span>
+                    <input type="date" name="data_fim" value="{{ data_fim|date:'Y-m-d' }}" class="border p-1 rounded">
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Atualizar</button>
+            </form>
+            <div class="flex gap-2">
+                <a href="{% url 'financeiro:relatorio_dre' %}?data_inicio={{ data_inicio|date:'Y-m-d' }}&data_fim={{ data_fim|date:'Y-m-d' }}" class="text-blue-600 hover:underline flex items-center">
+                    Ver Analítico
+                </a>
+                <button onclick="window.print()" class="bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-800"><i class="fa fa-print"></i></button>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+
+            <!-- RECEITAS -->
+            <div>
+                <div class="border-b border-green-600 mb-1">
+                    <h3 class="font-bold text-green-800 text-sm uppercase">1. Receitas</h3>
+                </div>
+                <table class="w-full text-sm">
+                    {% for codigo, dados in receitas.items %}
+                    <tr>
+                        <td class="py-1 w-16 font-mono text-gray-500 font-bold">{{ codigo }}</td>
+                        <td class="py-1 dotted-line font-bold text-gray-700">{{ dados.nome }}</td>
+                        <td class="py-1 text-right font-bold w-32 text-gray-800">+ {{ dados.total|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center italic text-gray-400 py-2">Sem receitas.</td></tr>
+                    {% endfor %}
+                    
+                    <tr class="bg-green-50">
+                        <td colspan="2" class="py-1 text-right uppercase text-green-800 font-bold pr-4 text-xs">Total Receitas</td>
+                        <td class="py-1 text-right font-bold text-green-700 border-t border-green-300">R$ {{ total_receitas|floatformat:2 }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- DESPESAS -->
+            <div>
+                <div class="border-b border-red-600 mb-1">
+                    <h3 class="font-bold text-red-800 text-sm uppercase">2. Despesas</h3>
+                </div>
+                <table class="w-full text-sm">
+                    {% for codigo, dados in despesas.items %}
+                    <tr>
+                        <td class="py-1 w-16 font-mono text-gray-500 font-bold">{{ codigo }}</td>
+                        <td class="py-1 dotted-line font-bold text-gray-700">{{ dados.nome }}</td>
+                        <td class="py-1 text-right font-bold w-32 text-red-600">({{ dados.total|floatformat:2 }})</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center italic text-gray-400 py-2">Sem despesas.</td></tr>
+                    {% endfor %}
+
+                    <tr class="bg-red-50">
+                        <td colspan="2" class="py-1 text-right uppercase text-red-800 font-bold pr-4 text-xs">Total Despesas</td>
+                        <td class="py-1 text-right font-bold text-red-700 border-t border-red-300">R$ {{ total_despesas|floatformat:2 }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- RESULTADO FINAL -->
+            <div class="mt-6 border-t-2 border-gray-800 pt-2">
+                <div class="flex justify-between items-center p-3 rounded {% if resultado >= 0 %}bg-blue-50{% else %}bg-red-50{% endif %}">
+                    <span class="font-bold text-gray-900 uppercase text-base">Resultado Líquido</span>
+                    <span class="font-bold text-lg {% if resultado >= 0 %}text-blue-800{% else %}text-red-800{% endif %}">
+                        R$ {{ resultado|floatformat:2 }}
+                    </span>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="mt-8 text-center text-[9px] text-gray-400 border-t pt-2">
+            Visão Sintética • e-Financeiro SaaS
+        </div>
+
+    </div>
+</body>
+</html>
