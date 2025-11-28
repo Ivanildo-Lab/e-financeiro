@@ -4,82 +4,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>e-Financeiro | Bem-vindo</title>
+    <title>{% if user.is_authenticated %}{{ user.empresa.nome }}{% else %}e-Financeiro SaaS{% endif %}</title>
+    <link rel="shortcut icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .fade-in { animation: fadeIn 1s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .text-shadow { text-shadow: 2px 2px 4px rgba(0,0,0,0.6); }
+    </style>
 </head>
-<body class="font-sans antialiased text-gray-800">
+<body class="font-sans antialiased h-screen flex flex-col overflow-hidden bg-gray-900 text-white">
 
-    <!-- Navbar Transparente -->
-    <nav class="absolute top-0 w-full z-50 px-6 py-4 flex justify-between items-center">
-        <div class="font-bold text-2xl text-white tracking-wider flex items-center shadow-sm">
+    <!-- LÓGICA DO BANNER DE FUNDO -->
+    <div class="absolute inset-0 z-0 bg-cover bg-center transition-all duration-1000 transform scale-105"
+         style="background-image: url('{% if user.is_authenticated and user.empresa.banner %}{{ user.empresa.banner.url }}{% else %}{% static 'img/fundo-login.jpg' %}{% endif %}');">
+    </div>
+
+    <!-- OVERLAY (Máscara Escura) -->
+    <div class="absolute inset-0 z-10 bg-gradient-to-b from-black/70 via-black/40 to-black/80"></div>
+
+    <!-- NAVBAR TRANSPARENTE -->
+    <nav class="relative z-20 w-full px-8 py-6 flex justify-between items-center">
+        <div class="flex items-center gap-3">
             {% if user.is_authenticated and user.empresa.logo %}
-                <img src="{{ user.empresa.logo.url }}" class="h-10 mr-2 rounded bg-white p-1">
+                <img src="{{ user.empresa.logo.url }}" class="h-10 w-auto rounded bg-white/10 backdrop-blur p-1 shadow-lg">
             {% else %}
-                <i class="fa fa-wallet mr-2"></i>
+                <div class="h-10 w-10 rounded bg-blue-600 flex items-center justify-center shadow-lg text-white">
+                    <i class="fa fa-chart-line"></i>
+                </div>
             {% endif %}
             
-            {% if user.is_authenticated %}
-                {{ user.empresa.nome }}
-            {% else %}
-                e-Financeiro
-            {% endif %}
+            <span class="text-xl font-bold tracking-wider text-shadow">
+                {% if user.is_authenticated %}
+                    {{ user.empresa.nome }}
+                {% else %}
+                    e-FINANCEIRO <span class="text-blue-400">SaaS</span>
+                {% endif %}
+            </span>
         </div>
-        
-        <div class="space-x-4">
+
+        <div class="hidden md:flex items-center gap-6">
             {% if user.is_authenticated %}
-                <span class="text-white font-medium hidden sm:inline text-shadow">Olá, {{ user.first_name|default:user.username }}</span>
-                <a href="{% url 'dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-bold transition shadow-lg">
-                    Acessar Dashboard
-                </a>
-                <a href="{% url 'admin:logout' %}" class="text-white hover:text-gray-200 px-3 py-2 font-medium shadow-sm">Sair</a>
+                <div class="text-right">
+                    <p class="text-xs text-gray-300 uppercase tracking-widest">Usuário</p>
+                    <p class="font-semibold text-shadow">{{ user.first_name|default:user.username }}</p>
+                </div>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="text-gray-300 hover:text-white transition text-sm font-medium border border-white/20 px-4 py-2 rounded-full hover:bg-white/10">
+                        Sair
+                    </button>
+                </form>
             {% else %}
-                <a href="{% url 'admin:login' %}" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-full font-bold transition shadow-lg">
-                    Login
-                </a>
+                <a href="{% url 'login' %}" class="text-white hover:text-blue-300 transition font-medium">Fazer Login</a>
             {% endif %}
         </div>
     </nav>
 
-    <!-- Hero Section (Banner Dinâmico) -->
-    <div class="relative h-screen flex items-center justify-center bg-cover bg-center"
-         style="background-image: url('{% if user.is_authenticated and user.empresa.banner %}{{ user.empresa.banner.url }}{% else %}https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1920&auto=format&fit=crop{% endif %}');">
+    <!-- CONTEÚDO CENTRAL (HERO) -->
+    <main class="relative z-20 flex-1 flex flex-col items-center justify-center text-center px-4 fade-in">
         
-        <!-- Overlay Escuro -->
-        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+        {% if user.is_authenticated %}
+            <span class="inline-block py-1 px-3 rounded-full bg-blue-600/30 border border-blue-400 text-blue-300 text-xs font-bold tracking-widest uppercase mb-4 backdrop-blur-md">
+                Área do Cliente
+            </span>
+            
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 text-shadow leading-tight">
+                Gestão Inteligente<br>
+                para <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">{{ user.empresa.nome }}</span>
+            </h1>
+            
+            <p class="text-lg md:text-xl text-gray-200 mb-10 max-w-2xl mx-auto text-shadow">
+                Seu painel financeiro está pronto. Acompanhe seus indicadores em tempo real.
+            </p>
 
-        <!-- Conteúdo Central -->
-        <div class="relative z-10 text-center px-4 max-w-3xl mx-auto text-white">
-            {% if user.is_authenticated %}
-                <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">
-                    Gestão completa para <br><span class="text-blue-400">{{ user.empresa.nome }}</span>
-                </h1>
-                <p class="text-xl md:text-2xl mb-8 text-gray-200">
-                    Acompanhe cadastros, finanças e relatórios em um só lugar.
-                </p>
-                <a href="{% url 'dashboard' %}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-4 rounded shadow-lg transform hover:-translate-y-1 transition">
-                    <i class="fa fa-tachometer-alt mr-2"></i> Ir para o Painel
+            <div class="flex flex-col sm:flex-row gap-4">
+                <a href="{% url 'dashboard' %}" class="group relative px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full shadow-lg hover:shadow-blue-500/50 transition-all duration-300 transform hover:-translate-y-1">
+                    <span class="flex items-center gap-2">
+                        Acessar Dashboard
+                        <i class="fa fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </span>
                 </a>
-            {% else %}
-                <h1 class="text-4xl md:text-6xl font-bold mb-4">
-                    e-Financeiro SaaS
-                </h1>
-                <p class="text-xl md:text-2xl mb-8 text-gray-200">
-                    A plataforma multiempresa definitiva para gestão de clientes e controle financeiro.
-                </p>
-                <div class="space-x-4">
-                    <a href="{% url 'admin:login' %}" class="inline-block bg-white text-gray-900 hover:bg-gray-100 text-lg px-8 py-3 rounded font-bold transition">
-                        Entrar Agora
-                    </a>
-                </div>
-            {% endif %}
-        </div>
+            </div>
 
-        <!-- Footerzinho -->
-        <div class="absolute bottom-4 text-center w-full text-gray-400 text-sm">
-            &copy; {% now "Y" %} e-Financeiro System. Todos os direitos reservados.
-        </div>
-    </div>
+        {% else %}
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 text-shadow">
+                O Controle Financeiro <br>
+                que sua empresa merece.
+            </h1>
+            
+            <p class="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto text-shadow">
+                Uma plataforma completa, multiempresa e segura para gerenciar suas contas a pagar, receber e fluxo de caixa.
+            </p>
+
+            <a href="{% url 'login' %}" class="group px-8 py-4 bg-white text-gray-900 font-bold rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:-translate-y-1">
+                <span class="flex items-center gap-2">
+                    <i class="fa fa-user-circle text-blue-600"></i>
+                    Entrar no Sistema
+                </span>
+            </a>
+        {% endif %}
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="relative z-20 w-full py-6 text-center text-gray-400 text-xs">
+        <p>&copy; {% now "Y" %} <strong>e-Financeiro SaaS</strong>. Todos os direitos reservados.</p>
+    </footer>
 
 </body>
 </html>

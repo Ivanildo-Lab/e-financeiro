@@ -1,6 +1,13 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Empresa, Usuario
+from .models import Empresa, Usuario, ParametroSistema
+
+# 3. Configuração para gerenciar Parâmetros do Sistema
+@admin.register(ParametroSistema)
+class ParametroSistemaAdmin(admin.ModelAdmin):
+    list_display = ('chave', 'valor', 'empresa')
+    list_filter = ('empresa', 'chave')
+    search_fields = ('chave', 'valor')
 
 # 1. Configuração para gerenciar Empresas
 @admin.register(Empresa)

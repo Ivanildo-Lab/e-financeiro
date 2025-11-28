@@ -1,95 +1,82 @@
 from django.db import models
-from core.models import ModeloSaaS  # Importamos a lógica Multiempresa
+from core.models import ModeloSaaS
+
+class CategoriaCliente(ModeloSaaS):
+    """Ex: Sócio Ouro, Aluno Manhã, Cliente Varejo"""
+    nome = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.nome
+    
+    class Meta:
+        verbose_name = "Categoria de Cliente"
+        verbose_name_plural = "Categorias de Clientes"
 
 class Cadastro(ModeloSaaS):
-    """
-    Tabela de Cadastros .
-    Herda de ModeloSaaS, então já possui o campo 'empresa' automaticamente.
-    """
-
-    # --- LISTAS DE OPÇÕES (Dropdowns) ---
-    ESTADO_CIVIL_CHOICES = [
-        ('SOLTEIRO', 'Solteiro(a)'),
-        ('CASADO', 'Casado(a)'),
-        ('DIVORCIADO', 'Divorciado(a)'),
-        ('VIUVO', 'Viúvo(a)'),
-        ('UNIAO', 'União Estável'),
+    TIPO_PESSOA_CHOICES = [
+        ('PF', 'Pessoa Física'),
+        ('PJ', 'Pessoa Jurídica'),
+    ]
+    
+    PAPEL_CHOICES = [
+        ('CLI', 'Cliente / Sócio / Aluno'),
+        ('FOR', 'Fornecedor'),
+        ('AMB', 'Ambos'),
     ]
 
-    SITUACAO_CHOICES = [
+    STATUS_CHOICES = [
         ('ATIVO', 'Ativo'),
         ('INATIVO', 'Inativo'),
-        ('PENDENTE', 'Pendente'),
     ]
 
-    UF_CHOICES = [
-        ('AC', 'Acre'), ('AL', 'Alagoas'), ('AP', 'Amapá'), ('AM', 'Amazonas'),
-        ('BA', 'Bahia'), ('CE', 'Ceará'), ('DF', 'Distrito Federal'), ('ES', 'Espírito Santo'),
-        ('GO', 'Goiás'), ('MA', 'Maranhão'), ('MT', 'Mato Grosso'), ('MS', 'Mato Grosso do Sul'),
-        ('MG', 'Minas Gerais'), ('PA', 'Pará'), ('PB', 'Paraíba'), ('PR', 'Paraná'),
-        ('PE', 'Pernambuco'), ('PI', 'Piauí'), ('RJ', 'Rio de Janeiro'), ('RN', 'Rio Grande do Norte'),
-        ('RS', 'Rio Grande do Sul'), ('RO', 'Rondônia'), ('RR', 'Roraima'), ('SC', 'Santa Catarina'),
-        ('SP', 'São Paulo'), ('SE', 'Sergipe'), ('TO', 'Tocantins')
-    ]
-
-    # --- DADOS DE REGISTRO ---
-    # Note: Removemos unique=True daqui e colocamos na classe Meta
-    # para permitir que empresas diferentes tenham números iguais.
-    num_registro = models.IntegerField(verbose_name="Nº Registro")
-    num_contrato = models.IntegerField(null=True, blank=True, verbose_name="Nº Contrato")
+    # --- Classificação ---
+    papel = models.CharField(max_length=3, choices=PAPEL_CHOICES, default='CLI', verbose_name="Tipo de Cadastro")
+    categoria = models.ForeignKey(CategoriaCliente, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Categoria (Apenas Clientes)")
     
-    data_admissao = models.DateField(verbose_name="Data de Admissão/Cadastro")
-    situacao = models.CharField(max_length=10, choices=SITUACAO_CHOICES, default='ATIVO', verbose_name="Situação")
-
-    # --- IDENTIFICAÇÃO PESSOAL ---
-    nome = models.CharField(max_length=255, verbose_name="Nome Completo")
-    apelido = models.CharField(max_length=100, verbose_name="Apelido / Nome Fantasia", blank=True)
+    # --- Identificação ---
+    tipo_pessoa = models.CharField(max_length=2, choices=TIPO_PESSOA_CHOICES, default='PF', verbose_name="Tipo de Pessoa")
     
-    data_nascimento = models.DateField(verbose_name="Data de Nascimento")
-    cpf = models.CharField(max_length=14, verbose_name="CPF")
-    rg = models.CharField(max_length=20, verbose_name="RG / Inscrição Estadual")
+    # PF e PJ compartilham o campo 'nome' (PF = Nome Completo, PJ = Nome Fantasia)
+    nome = models.CharField(max_length=255, verbose_name="Nome / Nome Fantasia")
     
-    nacionalidade = models.CharField(max_length=100, default='Brasileira')
-    naturalidade = models.CharField(max_length=100, verbose_name="Naturalidade (Cidade/UF)", blank=True)
-    estado_civil = models.CharField(max_length=10, choices=ESTADO_CIVIL_CHOICES)
-    profissao = models.CharField(max_length=100, verbose_name="Profissão", blank=True)
+    # Exclusivo PJ
+    razao_social = models.CharField(max_length=255, blank=True, null=True, verbose_name="Razão Social")
+    
+    # Documentos
+    cpf_cnpj = models.CharField(max_length=20, verbose_name="CPF ou CNPJ")
+    
+    # Separando os documentos
+    rg = models.CharField(max_length=20, blank=True, null=True, verbose_name="RG (Apenas PF)")
+    inscricao_estadual = models.CharField(max_length=20, blank=True, null=True, verbose_name="Inscrição Estadual (PJ ou Produtor Rural)")
+    
+    # Flag para Produtor Rural (Permite IE mesmo sendo PF)
+    is_produtor_rural = models.BooleanField(default=False, verbose_name="Produtor Rural?")
+    
+    # --- Dados Legados (Mantidos para não quebrar o que já fizemos) ---
+    num_registro = models.IntegerField(verbose_name="Nº Registro", null=True, blank=True)
+    data_nascimento = models.DateField(verbose_name="Data de Nascimento / Fundação", null=True, blank=True)
+    
+    # --- Contato ---
+    email = models.EmailField(max_length=254, null=True, blank=True)
+    celular = models.CharField(max_length=20, blank=True)
+    telefone_fixo = models.CharField(max_length=20, blank=True)
+    
+    # --- Endereço ---
+    cep = models.CharField(max_length=9, blank=True)
+    endereco = models.CharField(max_length=255, blank=True)
+    bairro = models.CharField(max_length=100, blank=True)
+    cidade = models.CharField(max_length=100, blank=True)
+    uf = models.CharField(max_length=2, blank=True)
 
-    # --- FILIAÇÃO ---
-    nome_pai = models.CharField(max_length=255, verbose_name="Nome do Pai", blank=True)
-    nome_mae = models.CharField(max_length=255, verbose_name="Nome da Mãe", blank=True)
-
-    # --- CONTATO ---
-    email = models.EmailField(max_length=254, null=True, blank=True, verbose_name="E-mail")
-    tel_residencial = models.CharField(max_length=20, verbose_name="Tel. Residencial", blank=True)
-    tel_trabalho = models.CharField(max_length=20, verbose_name="Tel. Trabalho", blank=True)
-    celular = models.CharField(max_length=20, verbose_name="Celular/WhatsApp", blank=True)
-
-    # --- ENDEREÇO ---
-    cep = models.CharField(max_length=9, verbose_name="CEP")
-    endereco = models.CharField(max_length=255, verbose_name="Logradouro (Rua, Av.)")
-    numero = models.CharField(max_length=20, verbose_name="Número", blank=True)
-    complemento = models.CharField(max_length=100, verbose_name="Complemento", blank=True)
-    bairro = models.CharField(max_length=100)
-    cidade = models.CharField(max_length=100)
-    estado = models.CharField(max_length=2, choices=UF_CHOICES, verbose_name="UF")
-
-    # --- OUTROS ---
+    situacao = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ATIVO')
     foto = models.ImageField(upload_to='fotos_cadastros/', null=True, blank=True)
-    observacoes = models.TextField(verbose_name="Observações", blank=True)
+    observacoes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.nome} (Reg: {self.num_registro})"
+        return self.nome 
 
     class Meta:
         verbose_name = "Cadastro"
         verbose_name_plural = "Cadastros"
         ordering = ['nome']
-        
-        # --- A MÁGICA DO SAAS (MULTIEMPRESA) ESTÁ AQUI ---
-        # Isso diz ao banco: "O CPF tem que ser único, mas APENAS dentro desta empresa".
-        # Se a Empresa A tiver o CPF 123, a Empresa B também pode ter o CPF 123.
-        unique_together = [
-            ['empresa', 'num_registro'],
-            ['empresa', 'cpf'],
-            ['empresa', 'num_contrato'],
-        ]
+        unique_together = [['empresa', 'cpf_cnpj']] # CPF/CNPJ único por empresa

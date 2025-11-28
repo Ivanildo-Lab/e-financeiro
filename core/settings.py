@@ -33,6 +33,9 @@ ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'core.Usuario'
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'home'  # Ao logar, vai para a Home (que mostra o banner da empresa)
+LOGOUT_REDIRECT_URL = 'login' # Ao sair, volta para o login
 
 # Application definition
 
@@ -138,6 +141,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
+# Adicione esta lista se ela não existir ou estiver vazia:
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

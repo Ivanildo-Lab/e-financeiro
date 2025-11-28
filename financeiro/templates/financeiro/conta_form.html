@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block titulo_cabecalho %}
+    {% if form.instance.pk %}Editar{% else %}Novo Lançamento{% endif %}
+{% endblock %}
+{% block subtitulo_cabecalho %}{{ titulo }}{% endblock %}
+{% block breadcrumb %}Formulário{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white rounded shadow border-t-4 {% if 'Recebimento' in titulo %}border-green-500{% else %}border-red-500{% endif %} p-6">
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <!-- DADOS PRINCIPAIS -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+            
+            <div class="md:col-span-8">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}<p class="text-xs text-red-600">{{ form.descricao.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="md:col-span-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria (Plano de Contas)</label>
+                {{ form.plano_de_contas }}
+            </div>
+
+            <div class="md:col-span-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cadastro</label>
+                {{ form.cadastro }}
+            </div>
+
+            <div class="md:col-span-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Data Vencimento</label>
+                {{ form.data_vencimento }}
+            </div>
+
+            <div class="md:col-span-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Valor Total</label>
+                <div class="relative rounded-md shadow-sm">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <span class="text-gray-500 sm:text-sm">R$</span>
+                    </div>
+                    {{ form.valor }}
+                </div>
+            </div>
+        </div>
+
+        <!-- ÁREA DE PARCELAMENTO (Só aparece na criação) -->
+        {% if not form.instance.pk %}
+        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+            <div class="flex items-center mb-4">
+                {{ form.gerar_parcelas }}
+                <label for="{{ form.gerar_parcelas.id_for_label }}" class="ml-2 text-sm font-bold text-gray-700 select-none cursor-pointer">
+                    Deseja parcelar este valor?
+                </label>
+            </div>
+
+            <div id="area-parcelas" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 transition-all">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Qtd. Parcelas</label>
+                    {{ form.qtd_parcelas }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Acréscimo / Juros (%)</label>
+                    {{ form.taxa_juros }}
+                </div>
+                <div class="bg-blue-50 p-2 rounded border border-blue-100 flex flex-col justify-center items-center">
+                    <span class="text-xs text-blue-600 uppercase font-bold">Valor da Parcela</span>
+                    <span class="text-lg font-bold text-blue-800" id="preview-parcela">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+            {{ form.observacoes }}
+        </div>
+
+        <!-- BOTÕES -->
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+            <button type="button" onclick="history.back()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Cancelar</button>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 shadow transition">
+                <i class="fa fa-save mr-1"></i> Salvar
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkParcelar = document.getElementById('id_gerar_parcelas');
+        const areaParcelas = document.getElementById('area-parcelas');
+        
+        // Elementos de Cálculo
+        const inputValor = document.getElementById('id_valor');
+        const inputQtd = document.getElementById('id_qtd_parcelas');
+        const inputJuros = document.getElementById('id_taxa_juros');
+        const displayParcela = document.getElementById('preview-parcela');
+
+        // Função para mostrar/esconder
+        function toggleParcelas() {
+            if (checkParcelar && checkParcelar.checked) {
+                areaParcelas.classList.remove('hidden');
+            } else if (areaParcelas) {
+                areaParcelas.classList.add('hidden');
+            }
+        }
+
+        // Função de Cálculo em Tempo Real
+        function calcularParcela() {
+            if (!checkParcelar.checked) return;
+
+            let valor = parseFloat(inputValor.value) || 0;
+            let qtd = parseInt(inputQtd.value) || 1;
+            let juros = parseFloat(inputJuros.value) || 0;
+
+            // Lógica: (Valor + Juros%) / Qtd
+            let valorTotal = valor + (valor * (juros / 100));
+            let valorParcela = valorTotal / qtd;
+
+            displayParcela.textContent = "R$ " + valorParcela.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // Eventos
+        if (checkParcelar) {
+            checkParcelar.addEventListener('change', function() {
+                toggleParcelas();
+                calcularParcela();
+            });
+            
+            inputValor.addEventListener('input', calcularParcela);
+            inputQtd.addEventListener('input', calcularParcela);
+            inputJuros.addEventListener('input', calcularParcela);
+        }
+    });
+</script>
+{% endblock %}

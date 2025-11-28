@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block titulo_cabecalho %}
+    {% if form.instance.pk %}Editar Caixa{% else %}Novo Caixa{% endif %}
+{% endblock %}
+{% block breadcrumb %}Formulário{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded shadow border-t-4 border-blue-500 p-6">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Caixa / Banco</label>
+            {{ form.nome }}
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Saldo Inicial (Abertura)</label>
+            <div class="relative rounded-md shadow-sm">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <span class="text-gray-500 sm:text-sm">R$</span>
+                </div>
+                {{ form.saldo_inicial }}
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Saldo existente antes de usar o sistema.</p>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'financeiro:lista_caixas' %}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancelar</a>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

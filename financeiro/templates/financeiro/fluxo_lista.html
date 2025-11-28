@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block titulo_cabecalho %}Fluxo de Caixa{% endblock %}
+{% block subtitulo_cabecalho %}Extrato e Movimentações{% endblock %}
+{% block breadcrumb %}Fluxo{% endblock %}
+
+{% block content %}
+
+<!-- 1. BARRA DE FILTROS E AÇÕES -->
+<div class="bg-white rounded shadow mb-6 p-4 border-l-4 border-blue-500">
+    <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        
+        <!-- Seleção de Caixa -->
+        <div class="md:col-span-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Conta / Caixa</label>
+            <select name="caixa" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border" onchange="this.form.submit()">
+                <option value="">-- Geral (Apenas Extrato) --</option>
+                {% for c in caixas %}
+                    <option value="{{ c.id }}" {% if caixa_selecionado_id == c.id|stringformat:"s" %}selected{% endif %}>
+                        {{ c.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Data Início -->
+        <div class="md:col-span-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">De:</label>
+            <input type="date" name="data_inicio" value="{{ data_inicio }}" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+        </div>
+
+        <!-- Data Fim -->
+        <div class="md:col-span-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Até:</label>
+            <input type="date" name="data_fim" value="{{ data_fim }}" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="md:col-span-2 flex space-x-2">
+            <!-- Botão Filtrar -->
+            <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded shadow transition" title="Filtrar">
+                <i class="fa fa-search"></i>
+            </button>
+            
+            <!-- Botão Imprimir Relatório -->
+            <a href="{% url 'financeiro:relatorio_fluxo' %}?data_inicio={{ data_inicio }}&data_fim={{ data_fim }}&caixa={{ caixa_selecionado_id }}" 
+               target="_blank" 
+               class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded shadow transition text-center" 
+               title="Imprimir Relatório">
+                <i class="fa fa-print"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- 2. RESUMO DO PERÍODO (Só aparece se tiver Caixa selecionado) -->
+{% if caixa_selecionado_id %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <!-- Saldo Anterior -->
+    <div class="bg-gray-100 p-4 rounded border border-gray-200">
+        <p class="text-xs text-gray-500 uppercase font-bold">Saldo Anterior ({{ data_inicio }})</p>
+        <p class="text-xl font-mono font-bold {% if saldo_anterior < 0 %}text-red-600{% else %}text-gray-800{% endif %}">
+            R$ {{ saldo_anterior|floatformat:2 }}
+        </p>
+    </div>
+    
+    <!-- Resultado do Período -->
+    <div class="bg-white p-4 rounded border border-gray-200 shadow-sm">
+        <p class="text-xs text-gray-500 uppercase font-bold">Resultado do Período</p>
+        <!-- Lógica visual: Saldo Final - Saldo Anterior -->
+        {% with resultado=saldo_final|add:saldo_anterior|stringformat:"f" %} 
+        <p class="text-xl font-mono font-bold text-blue-600">
+           Movimentações abaixo
+        </p>
+        {% endwith %}
+        <p class="text-sm text-gray-400">Entradas - Saídas</p>
+    </div>
+    
+    <!-- Saldo Final -->
+    <div class="bg-blue-50 p-4 rounded border border-blue-200">
+        <p class="text-xs text-blue-500 uppercase font-bold">Saldo Final ({{ data_fim }})</p>
+        <p class="text-2xl font-mono font-bold {% if saldo_final < 0 %}text-red-600{% else %}text-blue-800{% endif %}">
+            R$ {{ saldo_final|floatformat:2 }}
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- 3. TABELA DE EXTRATO -->
+<div class="bg-white rounded shadow">
+    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-700">Lançamentos</h3>
+        <a href="{% url 'financeiro:adicionar_lancamento' %}" class="text-sm text-green-600 hover:text-green-800 font-medium flex items-center border border-green-200 px-3 py-1 rounded hover:bg-green-50 transition">
+            <i class="fa fa-plus-circle mr-1"></i> Lançamento Avulso
+        </a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Data</th>
+                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Descrição</th>
+                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Categoria</th>
+                    {% if not caixa_selecionado_id %}
+                    <th class="px-6 py-3 text-left font-medium text-gray-500 uppercase">Caixa</th>
+                    {% endif %}
+                    <th class="px-6 py-3 text-right font-medium text-gray-500 uppercase">Valor</th>
+                    <th class="px-6 py-3 text-center font-medium text-gray-500 uppercase">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for l in lancamentos %}
+                <tr class="hover:bg-gray-50 transition-colors group">
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-600 font-mono">{{ l.data_lancamento|date:"d/m/Y" }}</td>
+                    
+                    <td class="px-6 py-4 font-medium text-gray-800">
+                        {{ l.descricao }}
+                        {% if l.conta_origem %}
+                            <span class="ml-2 px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 border border-gray-200 uppercase tracking-wide" title="Gerado automaticamente de uma baixa de conta">
+                                Auto
+                            </span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="px-6 py-4 text-gray-500">{{ l.plano_de_contas.nome|default:"-" }}</td>
+                    
+                    {% if not caixa_selecionado_id %}
+                    <td class="px-6 py-4 text-gray-500 text-xs">{{ l.caixa.nome }}</td>
+                    {% endif %}
+                    
+                    <td class="px-6 py-4 text-right font-bold 
+                        {% if l.tipo == 'C' %}text-green-600{% else %}text-red-600{% endif %}">
+                        R$ {{ l.valor|floatformat:2 }}
+                    </td>
+                    
+                    <td class="px-6 py-4 text-center whitespace-nowrap text-sm font-medium">
+                        <div class="flex items-center justify-center space-x-3">
+                            <!-- Ícone Indicador (Entrada/Saída) -->
+                            {% if l.tipo == 'C' %}
+                                <i class="fa fa-arrow-up text-green-500 opacity-50" title="Receita"></i>
+                            {% else %}
+                                <i class="fa fa-arrow-down text-red-500 opacity-50" title="Despesa"></i>
+                            {% endif %}
+
+                            <!-- Divisor Vertical -->
+                            <span class="text-gray-300">|</span>
+
+                            <!-- Botão Editar -->
+                            <a href="{% url 'financeiro:editar_lancamento' l.id %}" class="text-indigo-600 hover:text-indigo-900 transition transform hover:scale-110" title="Editar">
+                                <i class="fa fa-pencil"></i>
+                            </a>
+                            
+                            <!-- Botão Excluir -->
+                            <a href="{% url 'financeiro:excluir_lancamento' l.id %}" 
+                               onclick="return confirm('Tem certeza que deseja excluir? {% if l.conta_origem %}ATENÇÃO: Isso fará a conta original voltar para PENDENTE.{% endif %}')" 
+                               class="text-red-600 hover:text-red-900 transition transform hover:scale-110" title="Excluir">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-10 text-center text-gray-500 bg-gray-50 italic">
+                        Nenhuma movimentação encontrada para os filtros selecionados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Footer da Tabela -->
+    <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 text-xs text-gray-500 text-right">
+        Total de registros: {{ lancamentos.count }}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block titulo_cabecalho %}Editar Parâmetro{% endblock %}
+{% block breadcrumb %}Editar{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded shadow border-t-4 border-blue-600 p-6">
+    <div class="mb-6 border-b pb-4">
+        <h3 class="text-lg font-bold text-gray-800">{{ parametro.get_chave_display }}</h3>
+        <p class="text-sm text-gray-500">Cuidado ao alterar IDs. Verifique o código correto na listagem de cadastros.</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+            {{ form.valor }}
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição / Notas</label>
+            {{ form.descricao }}
+        </div>
+
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'configuracoes' %}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancelar</a>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Salvar Alteração</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

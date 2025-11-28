@@ -5,107 +5,300 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>e-Financeiro SaaS</title>
+    
+    <!-- Favicon -->
+    <link rel="shortcut icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome (Para os ícones do AdminLTE) -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Estilos Personalizados (Tema Admin) -->
     <style>
-        /* Ajustes finos para imitar AdminLTE */
+        /* Cores baseadas no AdminLTE */
         .skin-blue-header { background-color: #3c8dbc; }
         .skin-blue-logo { background-color: #367fa9; }
         .skin-blue-sidebar { background-color: #222d32; }
         .sidebar-hover:hover { background-color: #1e282c; border-left: 3px solid #3c8dbc; }
         .content-wrapper { background-color: #ecf0f5; }
+        
+        /* Animação e Utilitários */
+        .rotate-90 { transform: rotate(90deg); }
+        .transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
     </style>
 </head>
 <body class="font-sans antialiased h-screen flex overflow-hidden bg-gray-100">
 
-    <!-- Sidebar (Menu Lateral) -->
-    <aside class="w-64 skin-blue-sidebar text-white flex flex-col shadow-xl transition-all duration-300 hidden md:flex">
-        <!-- Logo Area -->
-        <div class="h-14 skin-blue-logo flex items-center justify-center font-bold text-xl tracking-wider uppercase">
-            <span class="mr-2"><i class="fa fa-leaf"></i></span> e-Financeiro
+    <!-- =============================================== -->
+    <!-- SIDEBAR (MENU LATERAL ESQUERDO)                 -->
+    <!-- =============================================== -->
+    <aside class="w-64 skin-blue-sidebar text-white flex flex-col shadow-xl transition-all duration-300 hidden md:flex flex-shrink-0">
+        <!-- Logo -->
+        <div class="h-14 skin-blue-logo flex items-center justify-center font-bold text-xl tracking-wider uppercase shadow-md z-20">
+            <span class="mr-2"><i class="fa fa-chart-line"></i></span> e-Financ.
         </div>
 
-        <!-- User Panel -->
-        <div class="p-4 flex items-center space-x-3 border-b border-gray-700">
-            <div class="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white font-bold">
+        <!-- Painel do Usuário -->
+        <div class="p-4 flex items-center space-x-3 border-b border-gray-700 bg-black/10">
+            <div class="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold border-2 border-gray-500 shadow-sm">
                 {{ user.username|slice:":1"|upper }}
             </div>
-            <div>
-                <p class="font-semibold text-sm">{{ user.first_name|default:user.username }}</p>
-                <div class="text-xs text-green-400"><i class="fa fa-circle text-[10px]"></i> Online</div>
+            <div class="overflow-hidden">
+                <p class="font-semibold text-sm truncate text-gray-200">{{ user.first_name|default:user.username }}</p>
+                <div class="text-xs text-green-400 flex items-center mt-0.5"><i class="fa fa-circle text-[8px] mr-1.5"></i> Online</div>
             </div>
         </div>
 
-        <!-- Menu -->
-        <nav class="flex-1 overflow-y-auto py-4 text-sm">
-            <p class="px-4 text-xs text-gray-500 uppercase font-semibold mb-2">Navegação Principal</p>
-            <ul class="space-y-0">
+        <!-- Navegação -->
+        <nav class="flex-1 overflow-y-auto py-4 text-sm custom-scrollbar">
+            <p class="px-4 text-xs text-gray-500 uppercase font-semibold mb-2 tracking-wider">Principal</p>
+            <ul class="space-y-1">
+                
+                <!-- 1. DASHBOARD -->
                 <li>
-                    <a href="#" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all">
-                        <i class="fa fa-dashboard w-6 text-center"></i>
-                        <span class="ml-2">Dashboard</span>
+                    <a href="{% url 'dashboard' %}" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all {% if request.resolver_match.url_name == 'dashboard' %}bg-black/20 border-l-4 border-blue-400 text-white{% endif %}">
+                        <i class="fa fa-tachometer-alt w-6 text-center text-lg"></i>
+                        <span class="ml-2 font-medium">Dashboard</span>
                     </a>
                 </li>
                 
+                <!-- 2. CADASTROS (MENU DROP-DOWN) -->
                 <li>
-                    <a href="{% url 'lista_cadastros' %}" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all {% if '/cadastros/' in request.path %}bg-black/20 border-l-4 border-blue-400 text-white{% endif %}">
-                        <i class="fa fa-users w-6 text-center"></i>
-                        <span class="ml-2">Cadastros</span>
-                    </a>
+                    <button type="button" onclick="toggleMenu('cadastros-menu')" class="w-full flex items-center justify-between py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all focus:outline-none {% if '/cadastros/' in request.path %}text-white bg-black/10{% endif %}">
+                        <div class="flex items-center">
+                            <i class="fa fa-address-book w-6 text-center text-lg"></i>
+                            <span class="ml-2 font-medium">Cadastros</span>
+                        </div>
+                        <i id="cadastros-arrow" class="fa fa-angle-right transition-transform duration-200 text-xs {% if '/cadastros/' in request.path %}rotate-90{% endif %}"></i>
+                    </button>
+                    
+                    <!-- Sub-itens -->
+                    <ul id="cadastros-menu" class="bg-black/20 overflow-hidden transition-all duration-300 {% if '/cadastros/' not in request.path %}hidden{% endif %}">
+                        <li>
+                            <a href="{% url 'lista_clientes' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-blue-400 {% if 'clientes' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-user mr-2 w-3"></i> Clientes
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'lista_fornecedores' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-blue-400 {% if 'fornecedores' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-truck mr-2 w-3"></i> Fornecedores
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
+                <!-- 3. FINANCEIRO (MENU DROP-DOWN) -->
                 <li>
-                    <a href="#" class="flex items-center py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all">
-                        <i class="fa fa-money-bill w-6 text-center"></i>
-                        <span class="ml-2">Financeiro</span>
-                    </a>
+                    <button type="button" onclick="toggleMenu('financeiro-menu')" class="w-full flex items-center justify-between py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all focus:outline-none {% if '/financeiro/' in request.path %}text-white bg-black/10{% endif %}">
+                        <div class="flex items-center">
+                            <i class="fa fa-money-bill-wave w-6 text-center text-lg"></i>
+                            <span class="ml-2 font-medium">Financeiro</span>
+                        </div>
+                        <i id="financeiro-arrow" class="fa fa-angle-right transition-transform duration-200 text-xs {% if '/financeiro/' in request.path %}rotate-90{% endif %}"></i>
+                    </button>
+                    
+                    <!-- Sub-itens -->
+                    <ul id="financeiro-menu" class="bg-black/20 overflow-hidden transition-all duration-300 {% if '/financeiro/' not in request.path %}hidden{% endif %}">
+                        <li>
+                            <a href="{% url 'financeiro:fluxo_caixa' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-blue-400 {% if 'fluxo' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-chart-line mr-2 w-3"></i> Fluxo de Caixa
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'financeiro:lista_receber' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-green-400 {% if 'receber' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-arrow-circle-down mr-2 w-3 text-green-500"></i> Contas a Receber
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'financeiro:lista_pagar' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-red-400 {% if 'pagar' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-arrow-circle-up mr-2 w-3 text-red-500"></i> Contas a Pagar
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'financeiro:lista_caixas' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-blue-400 {% if 'caixas' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-university mr-2 w-3"></i> Caixas e Bancos
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'financeiro:lista_plano_de_contas' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-purple-400 {% if 'plano-de-contas' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-list-ol mr-2 w-3"></i> Plano de Contas
+                            </a>
+                        </li>
+                    </ul>
                 </li>
+
             </ul>
         </nav>
     </aside>
 
-    <!-- Layout Principal -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- =============================================== -->
+    <!-- ÁREA PRINCIPAL (CONTEÚDO)                       -->
+    <!-- =============================================== -->
+    <div class="flex-1 flex flex-col overflow-hidden relative">
         
-        <!-- Header Topo -->
-        <header class="skin-blue-header h-14 flex items-center justify-between px-4 shadow text-white">
-            <button class="md:hidden text-white"><i class="fa fa-bars"></i></button>
-            <div class="flex-1"></div> <!-- Espaçador -->
-            
-            <div class="flex items-center space-x-4">
-                <span class="text-sm hidden md:block">{{ user.empresa.nome|default:"Sem Empresa" }}</span>
-                <div class="relative group">
-                    <button class="flex items-center focus:outline-none">
-                        <span class="mr-2">{{ user.username }}</span>
-                        <i class="fa fa-angle-down"></i>
+        <!-- HEADER SUPERIOR (NAVBAR) -->
+        <header class="skin-blue-header h-14 flex items-center justify-between px-4 shadow-md text-white z-20">
+            <!-- Botão Menu Mobile -->
+            <button class="md:hidden text-white focus:outline-none hover:text-gray-200 p-1">
+                <i class="fa fa-bars text-lg"></i>
+            </button>
+
+            <!-- Espaçador -->
+            <div class="flex-1"></div>
+
+            <!-- Lado Direito Header -->
+            <div class="flex items-center space-x-6">
+                <!-- Nome da Empresa -->
+                <div class="hidden md:flex flex-col items-end">
+                    <span class="font-bold text-sm tracking-wide">{{ user.empresa.nome|default:"Sem Empresa" }}</span>
+                    <span class="text-[10px] text-blue-100 opacity-80 font-mono">CNPJ: {{ user.empresa.cnpj }}</span>
+                </div>
+
+                <!-- MENU DO PERFIL / LOGOUT (COM JS ONCLICK) -->
+                <div class="relative">
+                    <!-- Botão que ativa o menu -->
+                    <button onclick="toggleUserMenu()" class="flex items-center space-x-2 focus:outline-none hover:bg-black/10 p-2 rounded transition duration-200">
+                        <span class="text-sm font-medium">{{ user.username }}</span>
+                        <i class="fa fa-angle-down text-xs ml-1"></i>
                     </button>
+
+                    <!-- Dropdown (Escondido) -->
+                    <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-md shadow-xl py-1 text-gray-800 border border-gray-200 z-50 transform origin-top-right transition-all">
+                        
+                        <!-- Info User -->
+                        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wider">Conta Logada</p>
+                            <p class="text-sm truncate font-medium text-gray-800">{{ user.email|default:user.username }}</p>
+                        </div>
+
+                        <!-- Links -->
+                        <a href="{% url 'configuracoes' %}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                            <i class="fa fa-cogs mr-3 text-gray-400"></i> Configurações
+                        </a>
+                        <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                            <i class="fa fa-user-circle mr-3 text-gray-400"></i> Meu Perfil
+                        </a>
+
+                        <div class="border-t border-gray-100 my-1"></div>
+                        
+                        <!-- Logout Seguro -->
+                        <form action="{% url 'logout' %}" method="post" class="block w-full">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition font-medium">
+                                <i class="fa fa-sign-out-alt mr-3"></i> Sair do Sistema
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <!-- Conteúdo (Content Wrapper) -->
-        <main class="flex-1 content-wrapper overflow-auto p-6">
-            <!-- Título da Página (Breadcrumb estilo AdminLTE) -->
-            <div class="flex justify-between items-center mb-6">
+        <!-- CONTEÚDO COM BANNER "GLASS" -->
+        <main class="flex-1 content-wrapper overflow-auto p-6 relative w-full h-full"
+              {% if user.is_authenticated and user.empresa.banner %}
+              style="background-image: linear-gradient(rgba(255,255,255,0.93), rgba(255,255,255,0.93)), url('{{ user.empresa.banner.url }}'); background-size: cover; background-position: center; background-attachment: fixed;"
+              {% else %}
+              style="background-color: #f3f4f6;"
+              {% endif %}>
+            
+            <!-- Breadcrumb -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-800">
+                    <h1 class="text-2xl font-bold text-gray-800 relative z-10 tracking-tight">
                         {% block titulo_cabecalho %}Painel{% endblock %}
                     </h1>
-                    <small class="text-gray-500">{% block subtitulo_cabecalho %}Visão Geral{% endblock %}</small>
+                    <small class="text-gray-500 font-medium relative z-10">{% block subtitulo_cabecalho %}Visão Geral{% endblock %}</small>
                 </div>
-                <div class="text-sm text-gray-500">
-                    <i class="fa fa-dashboard"></i> Home > {% block breadcrumb %}Atual{% endblock %}
+                <div class="text-xs text-gray-600 bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-200 font-medium">
+                    <i class="fa fa-home text-blue-500 mr-1"></i> Home <span class="mx-1 text-gray-400">/</span> {% block breadcrumb %}Atual{% endblock %}
                 </div>
             </div>
 
-            {% block content %}
-            <!-- Conteúdo aqui -->
-            {% endblock %}
+            <!-- MENSAGENS (TOASTS) -->
+            {% if messages %}
+                <div class="mb-6 space-y-2 relative z-10 animate-fade-in-down">
+                    {% for message in messages %}
+                        <div class="flex items-center p-4 mb-2 text-sm rounded-lg shadow-sm border-l-4 bg-white/95 backdrop-blur
+                            {% if message.tags == 'success' %} text-green-800 border-green-500 
+                            {% elif message.tags == 'error' %} text-red-800 border-red-500 
+                            {% elif message.tags == 'warning' %} text-yellow-800 border-yellow-500 
+                            {% else %} text-blue-800 border-blue-500 {% endif %}" role="alert">
+                            
+                            <i class="mr-3 text-lg fa 
+                                {% if message.tags == 'success' %} fa-check-circle 
+                                {% elif message.tags == 'error' %} fa-times-circle 
+                                {% elif message.tags == 'warning' %} fa-exclamation-triangle 
+                                {% else %} fa-info-circle {% endif %}">
+                            </i>
+                            <span class="font-medium">{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- ÁREA DE CONTEÚDO -->
+            <div class="relative z-10">
+                {% block content %}
+                {% endblock %}
+            </div>
+            
+            <!-- Footer -->
+            <footer class="mt-12 border-t border-gray-300/60 pt-6 text-center text-xs text-gray-500 relative z-10">
+                &copy; {% now "Y" %} <strong>e-Financeiro SaaS</strong>. Todos os direitos reservados.
+            </footer>
         </main>
     </div>
 
-</body>
-</html>
+    <!-- =============================================== -->
+    <!-- SCRIPTS GLOBAIS                                 -->
+    <!-- =============================================== -->
+    <script>
+        // 1. Toggle Menu Lateral (Submenus)
+        function toggleMenu(menuId) {
+            const menu = document.getElementById(menuId);
+            const arrow = document.getElementById(menuId.replace('-menu', '-arrow'));
+            
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                arrow.classList.add('rotate-90');
+            } else {
+                menu.classList.add('hidden');
+                arrow.classList.remove('rotate-90');
+            }
+        }
+
+        // 2. Toggle Menu do Usuário (Topo)
+        function toggleUserMenu() {
+            const menu = document.getElementById('user-menu-dropdown');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+            } else {
+                menu.classList.add('hidden');
+            }
+        }
+
+        // 3. Fechar menus ao clicar fora
+        window.addEventListener('click', function(e) {
+            const userBtn = document.querySelector('button[onclick="toggleUserMenu()"]');
+            const userMenu = document.getElementById('user-menu-dropdown');
+            
+            if (userBtn && userMenu && !userBtn.contains(e.target) && !userMenu.contains(e.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+
+        // 4. Fechar alertas automaticamente
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('[role="alert"]');
+            alerts.forEach(alert => {
+                alert.style.transition = "opacity 0.5s ease";
+                alert.style.opacity = "0";
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000); // Alerta desaparece após 5 segundos
+    </script>
+    
+    <!-- Bloco para Scripts Específicos das Páginas -->
+    {% block scripts %}
+    {% endblock %}

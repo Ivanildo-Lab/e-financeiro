@@ -30,3 +30,32 @@ class ModeloSaaS(models.Model):
     
     class Meta:
         abstract = True  # Isso diz ao Django: "Não crie uma tabela 'ModeloSaaS', use isso como modelo para outras"
+
+# ... (Mantenha as classes Empresa, Usuario e ModeloSaaS anteriores)
+
+class ParametroSistema(ModeloSaaS):
+    """
+    Armazena configurações globais da empresa.
+    Ex: ID do Caixa Padrão, Taxa de Juros, etc.
+    """
+    CHAVES_CHOICES = [
+        ('CAIXA_PADRAO_ID', 'Financeiro - ID do Caixa Padrão'),
+        ('TAXA_JUROS_MENSAL', 'Financeiro - Taxa de Juros Mensal (%)'),
+        ('PLANO_CONTAS_MENSALIDADE_ID', 'Financeiro - ID Plano Contas (Mensalidade)'),
+        ('PLANO_CONTAS_JUROS_ID', 'Financeiro - ID Plano Contas (Juros/Multa)'),
+    ]
+
+    chave = models.CharField(max_length=100, choices=CHAVES_CHOICES)
+    valor = models.CharField(max_length=255, help_text="Digite o ID ou o Valor correspondente")
+    descricao = models.TextField(blank=True, verbose_name="Descrição / Notas")
+
+    def __str__(self):
+        return f"{self.get_chave_display()}: {self.valor}"
+
+    class Meta:
+        verbose_name = "Parâmetro do Sistema"
+        verbose_name_plural = "Parâmetros do Sistema"
+        # Garante que uma empresa não tenha duas configurações para a mesma chave
+        unique_together = ['empresa', 'chave']
+
+        
