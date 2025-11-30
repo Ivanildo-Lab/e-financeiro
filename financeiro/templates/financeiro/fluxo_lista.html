@@ -8,13 +8,13 @@
 
 <!-- 1. BARRA DE FILTROS E AÇÕES -->
 <div class="bg-white rounded shadow mb-6 p-4 border-l-4 border-blue-500">
-    <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+    <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
         
         <!-- Seleção de Caixa -->
-        <div class="md:col-span-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Conta / Caixa</label>
-            <select name="caixa" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border" onchange="this.form.submit()">
-                <option value="">-- Geral (Apenas Extrato) --</option>
+        <div class="md:col-span-3">
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Conta / Caixa</label>
+            <select name="caixa" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm" onchange="this.form.submit()">
+                <option value="">-- Geral --</option>
                 {% for c in caixas %}
                     <option value="{{ c.id }}" {% if caixa_selecionado_id == c.id|stringformat:"s" %}selected{% endif %}>
                         {{ c.nome }}
@@ -23,30 +23,43 @@
             </select>
         </div>
 
-        <!-- Data Início -->
+        <!-- NOVO: Seleção de Categoria -->
         <div class="md:col-span-3">
-            <label class="block text-sm font-medium text-gray-700 mb-1">De:</label>
-            <input type="date" name="data_inicio" value="{{ data_inicio }}" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
+            <select name="categoria" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm">
+                <option value="">-- Todas --</option>
+                {% for cat in categorias %}
+                    <option value="{{ cat.id }}" {% if categoria_selecionada_id == cat.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cat.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Data Início -->
+        <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">De:</label>
+            <input type="date" name="data_inicio" value="{{ data_inicio }}" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm">
         </div>
 
         <!-- Data Fim -->
-        <div class="md:col-span-3">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Até:</label>
-            <input type="date" name="data_fim" value="{{ data_fim }}" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+        <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Até:</label>
+            <input type="date" name="data_fim" value="{{ data_fim }}" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border text-sm">
         </div>
 
         <!-- Botões de Ação -->
         <div class="md:col-span-2 flex space-x-2">
             <!-- Botão Filtrar -->
-            <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded shadow transition" title="Filtrar">
+            <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded shadow transition text-sm" title="Filtrar">
                 <i class="fa fa-search"></i>
             </button>
             
-            <!-- Botão Imprimir Relatório -->
-            <a href="{% url 'financeiro:relatorio_fluxo' %}?data_inicio={{ data_inicio }}&data_fim={{ data_fim }}&caixa={{ caixa_selecionado_id }}" 
+            <!-- Botão Imprimir Relatório (Atualizado com categoria) -->
+            <a href="{% url 'financeiro:relatorio_fluxo' %}?data_inicio={{ data_inicio }}&data_fim={{ data_fim }}&caixa={{ caixa_selecionado_id }}&categoria={{ categoria_selecionada_id }}" 
                target="_blank" 
-               class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded shadow transition text-center" 
-               title="Imprimir Relatório">
+               class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded shadow transition text-center text-sm" 
+               title="Imprimir">
                 <i class="fa fa-print"></i>
             </a>
         </div>

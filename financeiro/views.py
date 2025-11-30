@@ -126,13 +126,16 @@ def excluir_plano_de_contas(request, id):
 
 @login_required
 def lista_contas_receber(request):
+    """Lista apenas contas onde o Plano de Contas é TIPO RECEITA"""
+    # Base Query
     contas = Conta.objects.filter(empresa=request.user.empresa, plano_de_contas__tipo='R')
 
-    # --- FILTROS ---
+    # --- FILTROS DE BUSCA ---
     data_ini = request.GET.get('data_ini')
     data_fim = request.GET.get('data_fim')
     cliente_nome = request.GET.get('cliente')
-    status = request.GET.get('status') # Novo filtro
+    status = request.GET.get('status')
+    categoria_id = request.GET.get('categoria') # NOVO
 
     if data_ini and data_fim:
         contas = contas.filter(data_vencimento__range=[data_ini, data_fim])
@@ -140,36 +143,48 @@ def lista_contas_receber(request):
     if cliente_nome:
         contas = contas.filter(cadastro__nome__icontains=cliente_nome)
 
-    if status: # Lógica do Status
+    if status:
         if status == 'ATRASADA':
-            # Atrasada é Pendente + Vencimento menor que hoje
             contas = contas.filter(status='PENDENTE', data_vencimento__lt=date.today())
         else:
             contas = contas.filter(status=status)
 
+    # Filtro por Categoria (NOVO)
+    if categoria_id:
+        contas = contas.filter(plano_de_contas_id=categoria_id)
+
+    # Dados para os Dropdowns
     caixas = Caixa.objects.filter(empresa=request.user.empresa)
+    # Carrega apenas categorias de RECEITA para o filtro
+    categorias = PlanoDeContas.objects.filter(empresa=request.user.empresa, tipo='R').order_by('nome')
     
     return render(request, 'financeiro/contas_lista.html', {
         'contas': contas.order_by('data_vencimento'), 
         'caixas': caixas,
+        'categorias': categorias, # Envia para o template
         'titulo': 'Contas a Receber',
         'tipo_lista': 'receber',
-        # Passa os filtros de volta para o template manter preenchido
+        
+        # Mantém filtros preenchidos
         'filtro_data_ini': data_ini,
         'filtro_data_fim': data_fim,
         'filtro_nome': cliente_nome,
-        'filtro_status': status 
+        'filtro_status': status,
+        'filtro_categoria': categoria_id # NOVO
     })
 
 @login_required
 def lista_contas_pagar(request):
+    """Lista apenas contas onde o Plano de Contas é TIPO DESPESA"""
+    # Base Query
     contas = Conta.objects.filter(empresa=request.user.empresa, plano_de_contas__tipo='D')
 
-    # --- FILTROS ---
+    # --- FILTROS DE BUSCA ---
     data_ini = request.GET.get('data_ini')
     data_fim = request.GET.get('data_fim')
     fornecedor_nome = request.GET.get('cliente')
     status = request.GET.get('status')
+    categoria_id = request.GET.get('categoria') # NOVO
 
     if data_ini and data_fim:
         contas = contas.filter(data_vencimento__range=[data_ini, data_fim])
@@ -183,17 +198,25 @@ def lista_contas_pagar(request):
         else:
             contas = contas.filter(status=status)
 
+    # Filtro por Categoria (NOVO)
+    if categoria_id:
+        contas = contas.filter(plano_de_contas_id=categoria_id)
+
     caixas = Caixa.objects.filter(empresa=request.user.empresa)
+    # Carrega apenas categorias de DESPESA para o filtro
+    categorias = PlanoDeContas.objects.filter(empresa=request.user.empresa, tipo='D').order_by('nome')
     
     return render(request, 'financeiro/contas_lista.html', {
         'contas': contas.order_by('data_vencimento'), 
         'caixas': caixas,
+        'categorias': categorias,
         'titulo': 'Contas a Pagar',
         'tipo_lista': 'pagar',
         'filtro_data_ini': data_ini,
         'filtro_data_fim': data_fim,
         'filtro_nome': fornecedor_nome,
-        'filtro_status': status
+        'filtro_status': status,
+        'filtro_categoria': categoria_id
     })
 
 # ==========================================================
@@ -360,21 +383,77 @@ def fluxo_caixa(request):
     hoje = date.today()
     inicio_mes = hoje.replace(day=1)
     
-    data_inicio = request.GET.get('data_inicio', inicio_mes.strftime('%Y-%m-%d'))
-    data_fim = request.GET.get('data_fim', hoje.strftime('%Y-%m-%d'))
+    # Se não vier no GET, usa os padrões
+    data_inicio = request.GET.get('data_inicio') or inicio_mes.strftime('%Y-%m-%d')
+    data_fim = request.GET.get('data_fim') or hoje.strftime('%Y-%m-%d')
 
-    # 2. Definição do Caixa
-    caixa_id = request.GET.get('caixa')
+    # 2. Lógica Rígida de Seleção do Caixa
+    # Verifica se o usuário submeteu o formulário (se 'caixa' está nos parametros GET)
+    parametro_caixa_get = request.GET.get('caixa')
     
-    # Se não veio filtro, busca o padrão no ParametroSistema
-    if not caixa_id:
+    caixa_id = None
+    
+    if parametro_caixa_get is not None:
+        # CENÁRIO A: O usuário clicou em "Filtrar"
+        if parametro_caixa_get != '':
+            caixa_id = int(parametro_caixa_get)
+        else:
+            # Se veio vazio (''), o usuário quer ver "Todos" (Geral)
+            caixa_id = None
+    else:
+        # CENÁRIO B: Primeira carga da página (sem filtros na URL)
+        # Tenta pegar o padrão do sistema
         try:
             param = ParametroSistema.objects.get(empresa=request.user.empresa, chave='CAIXA_PADRAO_ID')
-            caixa_id = param.valor
-        except (ParametroSistema.DoesNotExist, ValueError):
+            if param.valor and param.valor.isdigit():
+                caixa_id = int(param.valor)
+        except ParametroSistema.DoesNotExist:
             caixa_id = None
 
-    # 3. Query Base
+    # 3. Definição da Categoria
+    categoria_id_str = request.GET.get('categoria')
+
+    # =======================================================
+    # CÁLCULO DO SALDO ANTERIOR (Onde estava o erro provável)
+    # =======================================================
+    
+    # A. Saldo Inicial do Cadastro (Dinheiro que "nasceu" na conta)
+    saldo_inicial_cadastro = 0
+    
+    # Se tem filtro de categoria, Saldo Inicial de banco é zero (banco não tem categoria)
+    if not categoria_id_str:
+        if caixa_id:
+            # BUSCA ESPECÍFICA: Pega só deste caixa
+            caixa_obj = Caixa.objects.filter(id=caixa_id, empresa=request.user.empresa).first()
+            if caixa_obj:
+                saldo_inicial_cadastro = caixa_obj.saldo_inicial
+        else:
+            # GERAL: Soma todos os caixas da empresa
+            saldo_inicial_cadastro = Caixa.objects.filter(empresa=request.user.empresa).aggregate(Sum('saldo_inicial'))['saldo_inicial__sum'] or 0
+
+    # B. Movimentações Passadas (Tudo antes da data_inicio)
+    movimentos_anteriores = Lancamento.objects.filter(
+        empresa=request.user.empresa,
+        data_lancamento__lt=data_inicio # Menor que data de início
+    )
+    
+    # Filtros obrigatórios no histórico
+    if caixa_id:
+        movimentos_anteriores = movimentos_anteriores.filter(caixa_id=caixa_id)
+    
+    if categoria_id_str:
+        movimentos_anteriores = movimentos_anteriores.filter(plano_de_contas_id=categoria_id_str)
+
+    # Soma do histórico
+    total_anteriores = movimentos_anteriores.aggregate(Sum('valor'))['valor__sum'] or 0
+
+    # ===> SALDO ANTERIOR FINAL
+    saldo_anterior = saldo_inicial_cadastro + total_anteriores
+
+
+    # =======================================================
+    # MOVIMENTAÇÕES DO PERÍODO (TABELA)
+    # =======================================================
     lancamentos = Lancamento.objects.filter(
         empresa=request.user.empresa,
         data_lancamento__range=[data_inicio, data_fim]
@@ -382,42 +461,30 @@ def fluxo_caixa(request):
 
     if caixa_id:
         lancamentos = lancamentos.filter(caixa_id=caixa_id)
+    
+    if categoria_id_str:
+        lancamentos = lancamentos.filter(plano_de_contas_id=categoria_id_str)
 
     lancamentos = lancamentos.order_by('-data_lancamento')
     
-    # 4. Cálculo de Saldo Anterior (apenas se tiver caixa definido)
-    saldo_anterior = 0
-    if caixa_id:
-        # Soma todas as entradas anteriores à data_inicio
-        entradas_ant = Lancamento.objects.filter(
-            empresa=request.user.empresa, caixa_id=caixa_id, data_lancamento__lt=data_inicio, tipo='C'
-        ).aggregate(Sum('valor'))['valor__sum'] or 0
-        
-        # Soma todas as saídas (já negativas) anteriores
-        saidas_ant = Lancamento.objects.filter(
-            empresa=request.user.empresa, caixa_id=caixa_id, data_lancamento__lt=data_inicio, tipo='D'
-        ).aggregate(Sum('valor'))['valor__sum'] or 0
-        
-        # Saldo Inicial do cadastro
-        try:
-            saldo_inicial_cadastro = Caixa.objects.get(id=caixa_id, empresa=request.user.empresa).saldo_inicial
-        except Caixa.DoesNotExist:
-            saldo_inicial_cadastro = 0
-        
-        saldo_anterior = saldo_inicial_cadastro + entradas_ant + saidas_ant
-
-    # 5. Totais do Período Atual
+    # Totais do Período
     total_periodo = lancamentos.aggregate(Sum('valor'))['valor__sum'] or 0
+    
+    # ===> SALDO FINAL
     saldo_final = saldo_anterior + total_periodo
 
+    # Contexto
     caixas = Caixa.objects.filter(empresa=request.user.empresa)
+    categorias = PlanoDeContas.objects.filter(empresa=request.user.empresa).order_by('nome')
 
     return render(request, 'financeiro/fluxo_lista.html', {
         'lancamentos': lancamentos, 
         'saldo_anterior': saldo_anterior,
         'saldo_final': saldo_final,
         'caixas': caixas,
+        'categorias': categorias,
         'caixa_selecionado_id': str(caixa_id) if caixa_id else '',
+        'categoria_selecionada_id': categoria_id_str or '',
         'data_inicio': data_inicio,
         'data_fim': data_fim,
     })
@@ -468,32 +535,73 @@ def excluir_lancamento(request, id):
 
 @login_required
 def relatorio_fluxo(request):
-    # 1. Filtros de Data
+    # 1. Definição de Datas
     hoje = date.today()
     inicio_mes = hoje.replace(day=1)
     
     data_inicio_str = request.GET.get('data_inicio') or inicio_mes.strftime('%Y-%m-%d')
     data_fim_str = request.GET.get('data_fim') or hoje.strftime('%Y-%m-%d')
     
-    data_inicio_obj = parse_date(data_inicio_str)
-    data_fim_obj = parse_date(data_fim_str)
+    data_inicio = parse_date(data_inicio_str)
+    data_fim = parse_date(data_fim_str)
 
-    # 2. Filtro de Caixa e Busca do Padrão
-    caixa_id = request.GET.get('caixa')
+    # 2. Filtros (Caixa e Categoria)
+    caixa_id_str = request.GET.get('caixa')
+    categoria_id_str = request.GET.get('categoria')
+    
+    caixa_id = None
     caixa_selecionado = None
 
-    if caixa_id:
+    # Lógica do Caixa (Prioridade: Filtro > Padrão > Geral)
+    if caixa_id_str and caixa_id_str != 'None' and caixa_id_str != '':
+        caixa_id = int(caixa_id_str)
         caixa_selecionado = Caixa.objects.filter(id=caixa_id, empresa=request.user.empresa).first()
     else:
+        # Se não veio no filtro, tenta o padrão APENAS se o usuário não pediu "Todos" explicitamente
+        # Aqui assumimos que se veio vazio na URL, tenta o padrão.
         try:
             param = ParametroSistema.objects.get(empresa=request.user.empresa, chave='CAIXA_PADRAO_ID')
-            caixa_id = param.valor
-            caixa_selecionado = Caixa.objects.filter(id=caixa_id, empresa=request.user.empresa).first()
-        except (ParametroSistema.DoesNotExist, ValueError):
-            caixa_selecionado = None
-            caixa_id = None
+            if param.valor and param.valor.isdigit():
+                caixa_id = int(param.valor)
+                caixa_selecionado = Caixa.objects.filter(id=caixa_id, empresa=request.user.empresa).first()
+        except ParametroSistema.DoesNotExist:
+            pass
 
-    # 3. Busca
+    # =======================================================
+    # 3. CÁLCULO DO SALDO ANTERIOR (A CORREÇÃO)
+    # =======================================================
+    saldo_inicial_cadastro = 0
+    
+    # Se não tem filtro de categoria, considera o saldo de abertura do banco
+    if not categoria_id_str:
+        if caixa_id:
+            if caixa_selecionado:
+                saldo_inicial_cadastro = caixa_selecionado.saldo_inicial
+        else:
+            # Soma de todos os caixas
+            saldo_inicial_cadastro = Caixa.objects.filter(empresa=request.user.empresa).aggregate(Sum('saldo_inicial'))['saldo_inicial__sum'] or 0
+
+    # Movimentações anteriores à data de início
+    movimentos_anteriores = Lancamento.objects.filter(
+        empresa=request.user.empresa,
+        data_lancamento__lt=data_inicio_str
+    )
+    
+    if caixa_id:
+        movimentos_anteriores = movimentos_anteriores.filter(caixa_id=caixa_id)
+    
+    if categoria_id_str:
+        movimentos_anteriores = movimentos_anteriores.filter(plano_de_contas_id=categoria_id_str)
+
+    total_anteriores = movimentos_anteriores.aggregate(Sum('valor'))['valor__sum'] or 0
+    
+    # ===> SALDO ANTERIOR REAL
+    saldo_anterior = saldo_inicial_cadastro + total_anteriores
+
+
+    # =======================================================
+    # 4. DADOS DO PERÍODO
+    # =======================================================
     lancamentos = Lancamento.objects.filter(
         empresa=request.user.empresa,
         data_lancamento__range=[data_inicio_str, data_fim_str]
@@ -501,23 +609,36 @@ def relatorio_fluxo(request):
 
     if caixa_id:
         lancamentos = lancamentos.filter(caixa_id=caixa_id)
+    
+    if categoria_id_str:
+        lancamentos = lancamentos.filter(plano_de_contas_id=categoria_id_str)
 
+    # Listas detalhadas
     receitas = lancamentos.filter(tipo='C').order_by('data_lancamento')
     despesas = lancamentos.filter(tipo='D').order_by('data_lancamento')
 
+    # Totais do Período
     total_receitas = receitas.aggregate(Sum('valor'))['valor__sum'] or 0
     total_despesas = despesas.aggregate(Sum('valor'))['valor__sum'] or 0
-    resultado = total_receitas + total_despesas
+    resultado_periodo = total_receitas + total_despesas
+    
+    # ===> SALDO FINAL REAL
+    saldo_final = saldo_anterior + resultado_periodo
 
     return render(request, 'financeiro/relatorio_impresso.html', {
-        'data_inicio': data_inicio_obj,
-        'data_fim': data_fim_obj,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
         'caixa_selecionado': caixa_selecionado,
         'receitas': receitas,
         'despesas': despesas,
+        
+        # Totais Calculados
+        'saldo_anterior': saldo_anterior,
         'total_receitas': total_receitas,
         'total_despesas': total_despesas,
-        'resultado': resultado,
+        'resultado_periodo': resultado_periodo,
+        'saldo_final': saldo_final,
+        
         'empresa': request.user.empresa,
     })
 
@@ -529,12 +650,9 @@ def relatorio_contas(request):
     tipo_lista = request.GET.get('tipo_lista', 'receber')
     tipo_plano = 'R' if tipo_lista == 'receber' else 'D'
     
-    # Base Query
     contas = Conta.objects.filter(empresa=request.user.empresa, plano_de_contas__tipo=tipo_plano)
 
-    # --- REAPLICA OS MESMOS FILTROS DA LISTA (COM PROTEÇÃO) ---
-    
-    # Helper para limpar strings 'None' ou vazias
+    # Helper para limpar strings
     def clean_val(val):
         return val if val and val != 'None' else None
 
@@ -542,27 +660,26 @@ def relatorio_contas(request):
     data_fim = clean_val(request.GET.get('data_fim'))
     nome = clean_val(request.GET.get('cliente'))
     status = clean_val(request.GET.get('status'))
+    categoria_id = clean_val(request.GET.get('categoria')) # NOVO
 
-    # 1. Filtro de Data (Só aplica se tiver AS DUAS datas válidas)
     if data_ini and data_fim:
         contas = contas.filter(data_vencimento__range=[data_ini, data_fim])
     
-    # 2. Filtro de Nome
     if nome:
         contas = contas.filter(cadastro__nome__icontains=nome)
 
-    # 3. Filtro de Status
     if status:
         if status == 'ATRASADA':
             contas = contas.filter(status='PENDENTE', data_vencimento__lt=date.today())
         else:
             contas = contas.filter(status=status)
 
-    contas = contas.order_by('data_vencimento')
+    # Filtro Categoria no Relatório
+    if categoria_id:
+        contas = contas.filter(plano_de_contas_id=categoria_id)
 
-    # Totais
+    contas = contas.order_by('data_vencimento')
     total_valor = contas.aggregate(Sum('valor'))['valor__sum'] or 0
-    
     titulo_relatorio = "Relatório de Contas a Receber" if tipo_lista == 'receber' else "Relatório de Contas a Pagar"
 
     return render(request, 'financeiro/relatorio_contas_impresso.html', {
@@ -570,7 +687,6 @@ def relatorio_contas(request):
         'total_valor': total_valor,
         'titulo_relatorio': titulo_relatorio,
         'empresa': request.user.empresa,
-        # Envia objetos de data para o template formatar, ou None
         'data_ini': parse_date(data_ini) if data_ini else None,
         'data_fim': parse_date(data_fim) if data_fim else None,
         'status_filtro': status

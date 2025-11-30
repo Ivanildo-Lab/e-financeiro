@@ -121,13 +121,16 @@
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ grafico_labels|json_script:"grafico_labels" }}
+{{ grafico_receita|json_script:"grafico_receita" }}
+{{ grafico_despesa|json_script:"grafico_despesa" }}
 <script>
     const ctx = document.getElementById('financeChart').getContext('2d');
     
-    // Dados injetados pelo Django
-    const labels = {{ grafico_labels|safe }};
-    const dadosReceita = {{ grafico_receita|safe }};
-    const dadosDespesa = {{ grafico_despesa|safe }};
+    // Dados injetados pelo Django (lidos de elementos <script type="application/json"> gerados por json_script)
+    const labels = JSON.parse(document.getElementById('grafico_labels').textContent);
+    const dadosReceita = JSON.parse(document.getElementById('grafico_receita').textContent);
+    const dadosDespesa = JSON.parse(document.getElementById('grafico_despesa').textContent);
 
     new Chart(ctx, {
         type: 'bar',

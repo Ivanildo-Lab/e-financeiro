@@ -6,29 +6,25 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Força configurações exatas de impressão */
+        /* Ajustes para Impressão */
         @media print {
             body { 
                 -webkit-print-color-adjust: exact; 
-                font-size: 9pt; /* Fonte bem econômica */
+                font-size: 9pt; 
             }
             .no-print { display: none !important; }
             .page-break { page-break-inside: avoid; }
-            
-            /* Remove margens automáticas do navegador para aproveitar a folha */
             @page { margin: 1cm; }
         }
         
-        /* Ajuste fino para visualização na tela ficar parecida com o papel */
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; font-size: 11px; }
     </style>
 </head>
-<body class="bg-gray-100 p-4 print:bg-white print:p-0 text-gray-800">
+<body class="bg-gray-100 p-4 print:bg-white print:p-0 text-gray-800 font-sans">
 
-    <!-- Container A4 compactado -->
     <div class="max-w-5xl mx-auto bg-white shadow-lg print:shadow-none print:w-full min-h-screen relative pb-10">
         
-        <!-- 1. CABEÇALHO COMPACTO -->
+        <!-- 1. CABEÇALHO -->
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-start">
             <div class="flex items-center gap-3">
                 {% if empresa.logo %}
@@ -61,7 +57,7 @@
                     {% if caixa_selecionado %}
                         {{ caixa_selecionado.nome }}
                     {% else %}
-                        Consolidado
+                        Consolidado (Todos os Caixas)
                     {% endif %}
                 </span>
             </div>
@@ -69,13 +65,13 @@
 
         <div class="p-6 space-y-6">
             
-            <!-- 3. BLOCO DE RECEITAS (Compacto) -->
+            <!-- 3. BLOCO DE RECEITAS -->
             <div class="page-break">
                 <div class="flex items-center mb-2 border-b border-green-200 pb-1">
                     <h3 class="text-xs font-bold text-green-700 uppercase">Receitas (Entradas)</h3>
                 </div>
                 
-                <table class="w-full text-[10px]"> <!-- Fonte tamanho 10px -->
+                <table class="w-full text-[10px]">
                     <thead>
                         <tr class="text-[9px] text-gray-400 uppercase border-b border-gray-100">
                             <th class="py-1 text-left font-medium w-24">Data</th>
@@ -96,17 +92,10 @@
                         <tr><td colspan="4" class="py-2 text-center text-gray-400 italic">Nenhuma receita.</td></tr>
                         {% endfor %}
                     </tbody>
-                    <!-- Subtotal Receitas -->
-                    <tfoot>
-                        <tr class="border-t border-gray-200 bg-green-50">
-                            <td colspan="3" class="py-1 text-right text-[9px] font-bold text-green-800 uppercase pr-2">Total Entradas:</td>
-                            <td class="py-1 text-right font-bold text-green-700">R$ {{ total_receitas|floatformat:2 }}</td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
 
-            <!-- 4. BLOCO DE DESPESAS (Compacto) -->
+            <!-- 4. BLOCO DE DESPESAS -->
             <div class="page-break">
                 <div class="flex items-center mb-2 border-b border-red-200 pb-1">
                     <h3 class="text-xs font-bold text-red-700 uppercase">Despesas (Saídas)</h3>
@@ -133,37 +122,41 @@
                         <tr><td colspan="4" class="py-2 text-center text-gray-400 italic">Nenhuma despesa.</td></tr>
                         {% endfor %}
                     </tbody>
-                    <!-- Subtotal Despesas -->
-                    <tfoot>
-                        <tr class="border-t border-gray-200 bg-red-50">
-                            <td colspan="3" class="py-1 text-right text-[9px] font-bold text-red-800 uppercase pr-2">Total Saídas:</td>
-                            <td class="py-1 text-right font-bold text-red-700">R$ {{ total_despesas|floatformat:2 }}</td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
 
-            <!-- 5. RESUMO FINAL (Compacto e Direita) -->
-            <div class="page-break border-t border-gray-300 pt-4 flex justify-end">
-                <div class="w-48 space-y-1">
+            <!-- 5. QUADRO DE RESUMO GERAL (NO FINAL) -->
+            <div class="page-break mt-8 pt-4 border-t-2 border-gray-800 flex justify-end">
+                <div class="w-full md:w-1/2 bg-gray-50 rounded border border-gray-200 p-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b border-gray-200 pb-2">Resumo Financeiro</h4>
                     
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500 font-medium">Entradas</span>
-                        <span class="text-green-700 font-bold">R$ {{ total_receitas|floatformat:2 }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500 font-medium">Saídas</span>
-                        <span class="text-red-700 font-bold">R$ {{ total_despesas|floatformat:2 }}</span>
-                    </div>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 font-medium">Saldo Anterior ({{ data_inicio|date:"d/m" }}):</span>
+                            <span class="font-bold {% if saldo_anterior < 0 %}text-red-600{% else %}text-gray-800{% endif %}">
+                                R$ {{ saldo_anterior|floatformat:2 }}
+                            </span>
+                        </div>
 
-                    <div class="border-t border-gray-300 my-1"></div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-green-700 font-medium">Total Entradas:</span>
+                            <span class="font-bold text-green-700">+ R$ {{ total_receitas|floatformat:2 }}</span>
+                        </div>
 
-                    <div class="flex justify-between items-center bg-gray-100 p-1 rounded">
-                        <span class="text-gray-800 font-bold text-xs uppercase">Resultado</span>
-                        <span class="font-bold text-sm {% if resultado >= 0 %}text-blue-700{% else %}text-red-700{% endif %}">
-                            R$ {{ resultado|floatformat:2 }}
-                        </span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-red-700 font-medium">Total Saídas:</span>
+                            <span class="font-bold text-red-700">R$ {{ total_despesas|floatformat:2 }}</span>
+                        </div>
+
+                        <!-- Linha Divisória -->
+                        <div class="border-t border-gray-300 my-2"></div>
+
+                        <div class="flex justify-between items-center bg-white p-2 rounded border border-blue-100">
+                            <span class="text-blue-800 font-bold uppercase text-sm">Saldo Final ({{ data_fim|date:"d/m" }}):</span>
+                            <span class="text-base font-bold {% if saldo_final < 0 %}text-red-700{% else %}text-blue-700{% endif %}">
+                                R$ {{ saldo_final|floatformat:2 }}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

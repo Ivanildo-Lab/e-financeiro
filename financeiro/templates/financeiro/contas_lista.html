@@ -18,18 +18,31 @@
                 </label>
                 <input type="text" name="cliente" value="{{ filtro_nome|default:'' }}" class="w-full border p-2 rounded text-sm h-9" placeholder="Buscar nome...">
             </div>
+
+            <!-- Categoria (NOVO) -->
+            <div class="md:col-span-2">
+                <label class="text-[10px] font-bold text-gray-500 uppercase">Categoria</label>
+                <select name="categoria" class="w-full border p-2 rounded text-sm h-9 bg-white">
+                    <option value="">Todas</option>
+                    {% for cat in categorias %}
+                        <option value="{{ cat.id }}" {% if filtro_categoria == cat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cat.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
             
             <!-- Datas -->
             <div class="md:col-span-2">
                 <label class="text-[10px] font-bold text-gray-500 uppercase">Vencimento De</label>
-                <input type="date" name="data_ini" value="{{ filtro_data_ini }}" class="w-full border p-2 rounded text-sm h-9">
+                <input type="date" name="data_ini" value="{{ filtro_data_ini|default:'' }}" class="w-full border p-2 rounded text-sm h-9">
             </div>
             <div class="md:col-span-2">
                 <label class="text-[10px] font-bold text-gray-500 uppercase">Até</label>
-                <input type="date" name="data_fim" value="{{ filtro_data_fim }}" class="w-full border p-2 rounded text-sm h-9">
+                <input type="date" name="data_fim" value="{{ filtro_data_fim|default:'' }}" class="w-full border p-2 rounded text-sm h-9">
             </div>
 
-            <!-- NOVO: Status -->
+            <!-- Status -->
             <div class="md:col-span-2">
                 <label class="text-[10px] font-bold text-gray-500 uppercase">Status</label>
                 <select name="status" class="w-full border p-2 rounded text-sm h-9 bg-white">
@@ -40,26 +53,23 @@
                 </select>
             </div>
 
-            <!-- Botões Filtro/Limpar -->
-            <div class="md:col-span-3 flex gap-2">
-                <button type="submit" class="bg-gray-700 text-white px-3 rounded hover:bg-gray-800 text-sm h-9 flex items-center justify-center flex-1" title="Filtrar">
+            <!-- Botões -->
+            <div class="md:col-span-1 flex gap-1">
+                <button type="submit" class="bg-gray-700 text-white px-2 rounded hover:bg-gray-800 text-sm h-9 flex items-center justify-center flex-1" title="Filtrar">
                     <i class="fa fa-search"></i>
                 </button>
-                <a href="?" class="bg-gray-200 text-gray-600 px-3 rounded hover:bg-gray-300 text-sm h-9 flex items-center justify-center" title="Limpar">
-                    <i class="fa fa-eraser"></i>
-                </a>
                 
-                <!-- BOTÃO IMPRIMIR (Envia os filtros atuais para o relatório) -->
-                <a href="{% url 'financeiro:relatorio_contas' %}?tipo_lista={{ tipo_lista }}&data_ini={{ filtro_data_ini|default:'' }}&data_fim={{ filtro_data_fim|default:'' }}&cliente={{ filtro_nome|default:'' }}&status={{ filtro_status|default:'' }}" 
+                <!-- BOTÃO IMPRIMIR (Atualizado com categoria) -->
+                <a href="{% url 'financeiro:relatorio_contas' %}?tipo_lista={{ tipo_lista }}&data_ini={{ filtro_data_ini|default:'' }}&data_fim={{ filtro_data_fim|default:'' }}&cliente={{ filtro_nome|default:'' }}&status={{ filtro_status|default:'' }}&categoria={{ filtro_categoria|default:'' }}" 
                    target="_blank" 
-                   class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700 text-sm h-9 flex items-center justify-center flex-1" 
+                   class="bg-blue-600 text-white px-2 rounded hover:bg-blue-700 text-sm h-9 flex items-center justify-center flex-1" 
                    title="Imprimir">
                     <i class="fa fa-print"></i>
                 </a>
             </div>
         </form>
 
-        <!-- BOTÃO NOVO -->
+        
         <div class="hidden lg:block border-l pl-4 ml-2">
             {% if tipo_lista == 'receber' %}
                 <a href="{% url 'financeiro:nova_receita' %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition shadow text-sm font-bold whitespace-nowrap h-9 flex items-center">
@@ -72,6 +82,7 @@
             {% endif %}
         </div>
     </div>
+
 
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
