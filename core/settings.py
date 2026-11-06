@@ -33,11 +33,44 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
+# Domínios permitidos. IMPORTANTE: o healthcheck do Docker/Coolify faz a
+# requisição com Host 127.0.0.1 — sem isso o Django devolve 400 Bad Request.
 ALLOWED_HOSTS = [
     h.strip()
-    for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
     if h.strip()
 ]
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+for h_interno in ('127.0.0.1', 'localhost'):
+    if h_interno not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(h_interno)
+
+# Deixa erros de host/segurança visíveis nos logs do Coolify
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'formatters': {
+        'verbose': {'format': '{asctime} {levelname} {name} {message}', 'style': '{'},
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
 
 # Confiar em proxies (o proxy do Coolify/Nginx termina o HTTPS)
 CSRF_TRUSTED_ORIGINS = [

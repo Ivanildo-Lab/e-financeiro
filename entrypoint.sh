@@ -27,6 +27,12 @@ print("ERRO: banco de dados indisponível após 120s", file=sys.stderr)
 sys.exit(1)
 PY
 
+# 1.1) Se foram passados argumentos (docker compose run ...), executa-os direto
+if [ "$#" -gt 0 ]; then
+    echo "==> Executando comando: $*"
+    exec "$@"
+fi
+
 # 2) Migrações e arquivos estáticos
 echo "==> Aplicando migrações..."
 python manage.py migrate --noinput
