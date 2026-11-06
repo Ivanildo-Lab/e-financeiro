@@ -35,13 +35,9 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 
 COPY requirements.txt .
-COPY manage.py .
-COPY core/ core/
-COPY web/ web/
-COPY cadastros/ cadastros/
-COPY financeiro/ financeiro/
-COPY templates/ templates/
-COPY static/ static/
+# Copia o projeto inteiro (pastas ignoradas ficam de fora via .dockerignore)
+# assim, novos apps criados no futuro já entram automaticamente na imagem
+COPY . .
 
 COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
