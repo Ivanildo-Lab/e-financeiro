@@ -1,0 +1,78 @@
+# ---------------------------------------------------------------
+# e-financeiro — Docker Compose (app + MySQL)
+# Usado tanto no `docker compose up` local quanto no Coolify.
+# As variáveis vêm do arquivo .env (local) ou das env vars do Coolify.
+# ---------------------------------------------------------------
+
+name: e-financeiro
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: e-financeiro-app
+    container_name: e-financeiro-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Defina DJANGO_SECRET_KEY no .env}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-False}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-efinanceiro_db}
+      MYSQL_USER: ${MYSQL_USER:-efinanceiro}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no .env}
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      TZ: America/Sao_Paulo
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-60}
+    # O Coolify detecta a porta exposta e cria a rota no proxy (HTTPS).
+    # APP_PORT publica a porta também no host (para testar localmente em
+    # http://localhost:18000). Ajuste/ remova na VPS se preferir.
+    expose:
+      - "8000"
+    ports:
+      - "${APP_PORT:-18000}:8000"
+    volumes:
+      - media_data:/app/media
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  db:
+    image: mysql:8.4
+    container_name: e-financeiro-db
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=America/Sao_Paulo
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-efinanceiro_db}
+      MYSQL_USER: ${MYSQL_USER:-efinanceiro}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Defina MYSQL_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no .env}
+      TZ: America/Sao_Paulo
+    # Porta do MySQL NÃO publicada externamente (só entre os containers)
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  media_data:
+    name: e-financeiro-media
+  db_data:
+    name: e-financeiro-db-data

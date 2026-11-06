@@ -24,12 +24,27 @@ print(f"A pasta templates deve ser: {os.path.join(BASE_DIR, 'templates')}")
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-4nr#4er14x58awmm1a^6di@_+%z#p2elug3y=ub(@1ow=%r&at'
+# Em produção (Docker/VPS) defina DJANGO_SECRET_KEY no arquivo .env
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-4nr#4er14x58awmm1a^6di@_+%z#p2elug3y=ub(@1ow=%r&at',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if h.strip()
+]
+
+# Confiar em proxies (o proxy do Coolify/Nginx termina o HTTPS)
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+    if o.strip()
+]
 
 AUTH_USER_MODEL = 'core.Usuario'
 
@@ -57,6 +72,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -97,11 +113,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'efinanceiro_db',  # O banco que combinamos
-        'USER': 'root',            # Seu usuário do MySQL (geralmente root)
-        'PASSWORD': '7895123',            # Sua senha do MySQL (preencha aqui)
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.environ.get('MYSQL_DATABASE', 'efinanceiro_db'),
+        'USER': os.environ.get('MYSQL_USER', 'root'),
+        'PASSWORD': os.environ.get('MYSQL_PASSWORD', '7895123'),
+        'HOST': os.environ.get('MYSQL_HOST', 'localhost'),
+        'PORT': os.environ.get('MYSQL_PORT', '3306'),
+        'CONN_MAX_AGE': int(os.environ.get('MYSQL_CONN_MAX_AGE', '60')),
+        'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
 
@@ -142,11 +160,42 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Onde o `collectstatic` coloca os arquivos (servidos pelo Whitenoise)
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 # Adicione esta lista se ela não existir ou estiver vazia:
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+# Storage: Whitenoise comprime os arquivos em produção; em DEBUG usa o storage padrão
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': (
+            'whitenoise.storage.CompressedManifestStaticFilesStorage'
+            if not DEBUG
+            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
+    },
+}
+
+# Segurança (somente quando DEBUG está desligado)
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # O Coolify já redireciona HTTP -> HTTPS no proxy. Mantenha False para o
+    # healthcheck do container funcionar; mude para True se subir sem proxy.
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'False').lower() in ('1', 'true', 'yes')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+    SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

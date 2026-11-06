@@ -1,0 +1,4 @@
+# Garante LF nos scripts shell mesmo no Windows (evita erro de execução no Linux)
+*.sh text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf

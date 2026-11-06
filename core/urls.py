@@ -28,3 +28,12 @@ if settings.DEBUG:
     # 2. Arquivos Estáticos (Static) - CSS, JS e sua imagem de fundo local
     # Aqui estava o erro: usamos a primeira pasta da lista de diretórios estáticos
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+else:
+    # Em produção (Docker) os STATIC são servidos pelo Whitenoise.
+    # A mídia (fotos/banner enviados) é servida pelo Django, apontando para o
+    # volume montado em /app/media. Em escala maior, mover para o proxy/CDN.
+    from django.views.static import serve as serve_file
+
+    urlpatterns += [
+        path('media/<path:path>', serve_file, {'document_root': settings.MEDIA_ROOT}),
+    ]

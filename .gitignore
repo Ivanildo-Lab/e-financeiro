@@ -2,12 +2,14 @@
 venv/
 env/
 .env
+!.env.example
 
 # Python e Django
 *.pyc
 __pycache__/
 db.sqlite3
 *.log
+staticfiles/
 
 # Mídia (Geralmente não enviamos fotos de teste de clientes reais)
 media/

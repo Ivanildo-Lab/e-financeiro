@@ -1,0 +1,30 @@
+# Ambientes e segredos
+.env
+.env.*
+!.env.example
+
+# Controle de versão e IDE
+.git
+.gitignore
+.vscode/
+.idea/
+
+# Python
+venv/
+env/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.log
+
+# Banco local e dados gerados
+db.sqlite3
+staticfiles/
+media/
+fotos_cadastros/
+
+# Docs e utilitários locais
+README.md
+Dockerfile
+docker-compose.yml
+.dockerignore
