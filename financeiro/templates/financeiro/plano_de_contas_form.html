@@ -54,6 +54,23 @@
             {% endif %}
         </div>
 
+        <!-- CAMPO FLAG: ACEITA LANÇAMENTOS -->
+        <div class="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-md">
+            <label class="flex items-start space-x-2 cursor-pointer">
+                {{ form.aceita_lancamentos }}
+                <span class="text-sm text-gray-700">
+                    <span class="font-medium">Aceita lançamentos</span><br>
+                    <span class="text-xs text-gray-500">
+                        Desmarque para que esta categoria <strong>não apareça</strong> na lista
+                        ao lançar no fluxo de caixa (padrão: marcado).
+                    </span>
+                </span>
+            </label>
+            {% if form.aceita_lancamentos.errors %}
+                <p class="text-xs text-red-600 mt-1">{{ form.aceita_lancamentos.errors.0 }}</p>
+            {% endif %}
+        </div>
+
         <div class="flex justify-end space-x-3">
             <a href="{% url 'financeiro:lista_plano_de_contas' %}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Cancelar</a>
             <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition shadow">Salvar</button>

@@ -20,6 +20,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome da Categoria</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Lançamentos</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
                 </tr>
             </thead>
@@ -35,6 +36,13 @@
                             <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-bold">DESPESA</span>
                         {% endif %}
                     </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if c.aceita_lancamentos %}
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-bold">SIM</span>
+                        {% else %}
+                            <span class="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs font-bold">NÃO</span>
+                        {% endif %}
+                    </td>
                     <td class="px-6 py-4 text-center space-x-2">
                         <a href="{% url 'financeiro:editar_plano_de_contas' c.id %}" class="text-blue-600 hover:text-blue-900"><i class="fa fa-pencil"></i></a>
                         <a href="{% url 'financeiro:excluir_plano_de_contas' c.id %}" onclick="return confirm('Tem certeza? Isso pode afetar relatórios.')" class="text-red-600 hover:text-red-900"><i class="fa fa-trash"></i></a>
@@ -42,7 +50,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">Nenhuma categoria cadastrada.</td>
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">Nenhuma categoria cadastrada.</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -11,6 +11,12 @@ class PlanoDeContas(ModeloSaaS):
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=1, choices=TIPO_CHOICES)
     codigo = models.CharField(max_length=20, blank=True, help_text="Ex: 1.01")
+    aceita_lancamentos = models.BooleanField(
+        default=True,
+        verbose_name="Aceita lançamentos",
+        help_text="Se desmarcado, esta categoria NÃO aparecerá na lista de escolha "
+                  "ao lançar no fluxo de caixa.",
+    )
     
     def __str__(self):
         return f"{self.codigo} - {self.nome}" if self.codigo else self.nome

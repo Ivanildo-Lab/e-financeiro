@@ -22,9 +22,12 @@ class CaixaForm(forms.ModelForm):
 class PlanoContasForm(forms.ModelForm):
     class Meta:
         model = PlanoDeContas
-        fields = ['codigo', 'nome', 'tipo']
+        fields = ['codigo', 'nome', 'tipo', 'aceita_lancamentos']
         widgets = {
             'tipo': forms.Select(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white'}),
+            'aceita_lancamentos': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
+            }),
         }
     
     def __init__(self, *args, **kwargs):
@@ -131,4 +134,17 @@ class LancamentoManualForm(forms.ModelForm):
         
         if user:
             self.fields['caixa'].queryset = Caixa.objects.filter(empresa=user.empresa)
-            self.fields['plano_de_contas'].queryset = PlanoDeContas.objects.filter(empresa=user.empresa)
+            # Só mostra categorias que aceitam lançamentos
+            self.fields['plano_de_contas'].queryset = PlanoDeContas.objects.filter(
+                empresa=user.empresa,
+                aceita_lancamentos=True,
+            )
+
+    def clean_plano_de_contas(self):
+        """Validação no servidor: impede enviar um plano desativado via POST."""
+        plano = self.cleaned_data.get('plano_de_contas')
+        if plano is not None and not plano.aceita_lancamentos:
+            raise forms.ValidationError(
+                "Esta categoria não aceita lançamentos no fluxo de caixa."
+            )
+        return plano
