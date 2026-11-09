@@ -88,9 +88,21 @@ class ContaForm(forms.ModelForm):
         
         # Filtros SaaS
         if user:
-            qs = PlanoDeContas.objects.filter(empresa=user.empresa)
+            # Só categorias que aceitam lançamentos
+            qs = PlanoDeContas.objects.filter(
+                empresa=user.empresa,
+                aceita_lancamentos=True,
+            )
             if tipo_filtro:
                 qs = qs.filter(tipo=tipo_filtro)
+
+            # Na edição, mantém a categoria já vinculada mesmo que esteja
+            # desativada agora (para não quebrar contas antigas)
+            if (self.instance and self.instance.pk
+                    and self.instance.plano_de_contas_id
+                    and not qs.filter(pk=self.instance.plano_de_contas_id).exists()):
+                qs = qs | PlanoDeContas.objects.filter(pk=self.instance.plano_de_contas_id)
+
             self.fields['plano_de_contas'].queryset = qs
             
             from cadastros.models import Cadastro
@@ -101,6 +113,21 @@ class ContaForm(forms.ModelForm):
             elif tipo_filtro == 'D':
                 qs_cadastro = qs_cadastro.filter(papel__in=['FOR', 'AMB'])
             self.fields['cadastro'].queryset = qs_cadastro
+
+    def clean_plano_de_contas(self):
+        """Bloqueia categorias que não aceitam lançamentos (a não ser que seja
+        a própria categoria já vinculada, em edição de uma conta antiga)."""
+        plano = self.cleaned_data.get('plano_de_contas')
+        if plano is not None and not plano.aceita_lancamentos:
+            ja_vinculado = (
+                self.instance and self.instance.pk
+                and plano.pk == self.instance.plano_de_contas_id
+            )
+            if not ja_vinculado:
+                raise forms.ValidationError(
+                    "Esta categoria não aceita lançamentos."
+                )
+        return plano
 
     def clean(self):
         cleaned_data = super().clean()
@@ -135,16 +162,31 @@ class LancamentoManualForm(forms.ModelForm):
         if user:
             self.fields['caixa'].queryset = Caixa.objects.filter(empresa=user.empresa)
             # Só mostra categorias que aceitam lançamentos
-            self.fields['plano_de_contas'].queryset = PlanoDeContas.objects.filter(
+            qs_plano = PlanoDeContas.objects.filter(
                 empresa=user.empresa,
                 aceita_lancamentos=True,
             )
+            # Na edição, mantém a categoria já vinculada mesmo desativada
+            # (para não quebrar lançamentos antigos)
+            if (self.instance and self.instance.pk
+                    and self.instance.plano_de_contas_id
+                    and not qs_plano.filter(pk=self.instance.plano_de_contas_id).exists()):
+                qs_plano = qs_plano | PlanoDeContas.objects.filter(
+                    pk=self.instance.plano_de_contas_id
+                )
+            self.fields['plano_de_contas'].queryset = qs_plano
 
     def clean_plano_de_contas(self):
-        """Validação no servidor: impede enviar um plano desativado via POST."""
+        """Validação no servidor: impede enviar um plano desativado via POST.
+        Mantém a categoria já vinculada em edição de lançamento antigo."""
         plano = self.cleaned_data.get('plano_de_contas')
         if plano is not None and not plano.aceita_lancamentos:
-            raise forms.ValidationError(
-                "Esta categoria não aceita lançamentos no fluxo de caixa."
+            ja_vinculado = (
+                self.instance and self.instance.pk
+                and plano.pk == self.instance.plano_de_contas_id
             )
+            if not ja_vinculado:
+                raise forms.ValidationError(
+                    "Esta categoria não aceita lançamentos no fluxo de caixa."
+                )
         return plano
