@@ -179,6 +179,22 @@ def adicionar_evento(request, id):
 
 
 @login_required
+def editar_evento(request, id):
+    """Edita um evento/vencimento (via formulário do topo, trocando a action)."""
+    evento = get_object_or_404(EventoVencimento, id=id, empresa=request.user.empresa)
+
+    if request.method == 'POST':
+        form = EventoVencimentoForm(request.POST, instance=evento)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Evento '{evento.descricao}' atualizado com sucesso!")
+        else:
+            messages.error(request, "Não foi possível atualizar o evento. Verifique os campos.")
+
+    return redirect('editar_cadastro', id=evento.cadastro_id)
+
+
+@login_required
 def excluir_evento(request, id):
     """Exclui um evento/vencimento (só da empresa do usuário)."""
     evento = get_object_or_404(EventoVencimento, id=id, empresa=request.user.empresa)

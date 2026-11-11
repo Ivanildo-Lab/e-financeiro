@@ -20,5 +20,6 @@ urlpatterns = [
 
     # --- EVENTOS / VENCIMENTOS ---
     path('eventos/adicionar/<int:id>/', views.adicionar_evento, name='adicionar_evento'),
+    path('eventos/editar/<int:id>/', views.editar_evento, name='editar_evento'),
     path('eventos/excluir/<int:id>/', views.excluir_evento, name='excluir_evento'),
 ]
