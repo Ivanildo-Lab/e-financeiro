@@ -1,5 +1,37 @@
 from django import forms
-from .models import Conta, Lancamento, Caixa, PlanoDeContas
+from .models import Conta, Lancamento, Caixa, PlanoDeContas, FormaPagamento, garantir_formas_padrao
+
+
+# --- FORMULÁRIO DE FORMA DE PAGAMENTO ---
+class FormaPagamentoForm(forms.ModelForm):
+    class Meta:
+        model = FormaPagamento
+        fields = ['nome', 'ativo']
+        widgets = {
+            'ativo': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded',
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if 'nome' in self.fields:
+            self.fields['nome'].widget.attrs['class'] = (
+                'w-full px-3 py-2 border border-gray-300 rounded-md '
+                'focus:outline-none focus:ring-2 focus:ring-blue-500'
+            )
+
+    def clean_nome(self):
+        nome = (self.cleaned_data.get('nome') or '').strip()
+        if self.user and nome:
+            existe = FormaPagamento.objects.filter(
+                empresa=self.user.empresa, nome__iexact=nome
+            ).exclude(id=self.instance.id).exists()
+            if existe:
+                raise forms.ValidationError("Esta forma de pagamento já existe.")
+        return nome
+
 
 # --- FORMULÁRIO DE CAIXA / BANCO ---
 class CaixaForm(forms.ModelForm):
@@ -143,7 +175,7 @@ class ContaForm(forms.ModelForm):
 class LancamentoManualForm(forms.ModelForm):
     class Meta:
         model = Lancamento
-        fields = ['caixa', 'data_lancamento', 'tipo', 'plano_de_contas', 'descricao', 'valor']
+        fields = ['caixa', 'data_lancamento', 'tipo', 'plano_de_contas', 'forma_pagamento', 'descricao', 'valor']
         widgets = {
             # CORREÇÃO AQUI: format='%Y-%m-%d'
             'data_lancamento': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
@@ -152,7 +184,10 @@ class LancamentoManualForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
+
+        # Forma de pagamento é obrigatória em lançamentos avulsos
+        self.fields['forma_pagamento'].required = True
+
         for field_name, field in self.fields.items():
             if field_name == 'valor':
                 field.widget.attrs['class'] = 'w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -161,6 +196,19 @@ class LancamentoManualForm(forms.ModelForm):
         
         if user:
             self.fields['caixa'].queryset = Caixa.objects.filter(empresa=user.empresa)
+
+            # Formas de pagamento (cria as padrão se a empresa ainda não tiver)
+            garantir_formas_padrao(user.empresa)
+            qs_forma = FormaPagamento.objects.filter(empresa=user.empresa, ativo=True)
+            # Na edição, mantém a forma já usada mesmo que esteja desativada
+            if (self.instance and self.instance.pk
+                    and self.instance.forma_pagamento_id
+                    and not qs_forma.filter(pk=self.instance.forma_pagamento_id).exists()):
+                qs_forma = qs_forma | FormaPagamento.objects.filter(
+                    pk=self.instance.forma_pagamento_id
+                )
+            self.fields['forma_pagamento'].queryset = qs_forma
+
             # Só mostra categorias que aceitam lançamentos
             qs_plano = PlanoDeContas.objects.filter(
                 empresa=user.empresa,

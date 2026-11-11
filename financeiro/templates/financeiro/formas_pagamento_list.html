@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block titulo_cabecalho %}Formas de Pagamento{% endblock %}
+{% block subtitulo_cabecalho %}PIX, Dinheiro, Cartões...{% endblock %}
+{% block breadcrumb %}Financeiro{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded shadow border-t-4 border-teal-500">
+    <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-700">Formas de Pagamento</h3>
+        <a href="{% url 'financeiro:adicionar_forma_pagamento' %}" class="bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700 transition">
+            <i class="fa fa-plus"></i> Nova Forma
+        </a>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Situação</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Usos</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200 text-sm">
+                {% for f in formas %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 font-bold text-gray-800">
+                        <i class="fa fa-credit-card mr-2 text-teal-500"></i>{{ f.nome }}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        {% if f.ativo %}
+                            <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">ATIVA</span>
+                        {% else %}
+                            <span class="px-2 py-1 bg-gray-200 text-gray-600 rounded text-xs font-bold">INATIVA</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-center text-gray-500">{{ f.lancamento_set.count }}</td>
+                    <td class="px-6 py-4 text-center space-x-2">
+                        <a href="{% url 'financeiro:editar_forma_pagamento' f.id %}" class="text-blue-600 hover:text-blue-900"><i class="fa fa-pencil"></i></a>
+                        <a href="{% url 'financeiro:excluir_forma_pagamento' f.id %}" onclick="return confirm('Tem certeza?')" class="text-red-600 hover:text-red-900"><i class="fa fa-trash"></i></a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">Nenhuma forma de pagamento cadastrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

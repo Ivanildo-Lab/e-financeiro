@@ -36,6 +36,12 @@ urlpatterns = [
     path('caixas/editar/<int:id>/', views.editar_caixa, name='editar_caixa'),
     path('caixas/excluir/<int:id>/', views.excluir_caixa, name='excluir_caixa'),
 
+    # FORMAS DE PAGAMENTO
+    path('formas-de-pagamento/', views.lista_formas_pagamento, name='lista_formas_pagamento'),
+    path('formas-de-pagamento/nova/', views.adicionar_forma_pagamento, name='adicionar_forma_pagamento'),
+    path('formas-de-pagamento/editar/<int:id>/', views.editar_forma_pagamento, name='editar_forma_pagamento'),
+    path('formas-de-pagamento/excluir/<int:id>/', views.excluir_forma_pagamento, name='excluir_forma_pagamento'),
+
     path('plano-de-contas/', views.lista_plano_de_contas, name='lista_plano_de_contas'),
     path('plano-de-contas/novo/', views.adicionar_plano_de_contas, name='adicionar_plano_de_contas'),
     path('plano-de-contas/editar/<int:id>/', views.editar_plano_de_contas, name='editar_plano_de_contas'),

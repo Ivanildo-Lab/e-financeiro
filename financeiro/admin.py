@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import PlanoDeContas, Caixa, Conta, Lancamento
+from .models import PlanoDeContas, Caixa, Conta, Lancamento, FormaPagamento
 
 
 @admin.register(PlanoDeContas)
@@ -18,6 +18,14 @@ class CaixaAdmin(admin.ModelAdmin):
     search_fields = ['nome', 'empresa__nome']
 
 
+@admin.register(FormaPagamento)
+class FormaPagamentoAdmin(admin.ModelAdmin):
+    list_display = ['empresa', 'nome', 'ativo']
+    list_filter = ['ativo', 'empresa']
+    search_fields = ['nome', 'empresa__nome']
+    list_editable = ['ativo']
+
+
 @admin.register(Conta)
 class ContaAdmin(admin.ModelAdmin):
     list_display = ['empresa', 'descricao', 'plano_de_contas', 'valor',
@@ -31,7 +39,7 @@ class ContaAdmin(admin.ModelAdmin):
 @admin.register(Lancamento)
 class LancamentoAdmin(admin.ModelAdmin):
     list_display = ['empresa', 'data_lancamento', 'descricao', 'valor',
-                    'tipo', 'caixa', 'plano_de_contas']
-    list_filter = ['tipo', 'caixa', 'plano_de_contas__tipo', 'empresa']
+                    'tipo', 'caixa', 'forma_pagamento', 'plano_de_contas']
+    list_filter = ['tipo', 'caixa', 'forma_pagamento', 'plano_de_contas__tipo', 'empresa']
     search_fields = ['descricao', 'caixa__nome', 'plano_de_contas__nome', 'empresa__nome']
     date_hierarchy = 'data_lancamento'

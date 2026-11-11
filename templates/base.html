@@ -121,6 +121,11 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{% url 'financeiro:lista_formas_pagamento' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-teal-400 {% if 'formas-de-pagamento' in request.path %}text-white font-bold{% endif %}">
+                                <i class="fa fa-credit-card mr-2 w-3"></i> Formas de Pagamento
+                            </a>
+                        </li>
+                        <li>
                             <a href="{% url 'financeiro:lista_plano_de_contas' %}" class="flex items-center py-2 pl-12 pr-4 text-gray-400 hover:text-white text-xs hover:bg-white/5 border-l-2 border-transparent hover:border-purple-400 {% if 'plano-de-contas' in request.path %}text-white font-bold{% endif %}">
                                 <i class="fa fa-list-ol mr-2 w-3"></i> Categorias/Plano de Contas
                             </a>

@@ -6,8 +6,8 @@ from django.db.models import Sum
 from django.utils.dateparse import parse_date
 
 # Imports dos Modelos e Formulários
-from .models import Conta, Lancamento, Caixa, PlanoDeContas
-from .forms import ContaForm, LancamentoManualForm, CaixaForm, PlanoContasForm
+from .models import Conta, Lancamento, Caixa, PlanoDeContas, FormaPagamento, garantir_formas_padrao
+from .forms import ContaForm, LancamentoManualForm, CaixaForm, PlanoContasForm, FormaPagamentoForm
 from core.models import ParametroSistema
 from decimal import Decimal
 import calendar
@@ -66,6 +66,56 @@ def excluir_caixa(request, id):
         caixa.delete()
         messages.success(request, "Caixa excluído com sucesso.")
     return redirect('financeiro:lista_caixas')
+
+
+# ==========================================================
+# 1.1 GESTÃO DE FORMAS DE PAGAMENTO
+# ==========================================================
+@login_required
+def lista_formas_pagamento(request):
+    garantir_formas_padrao(request.user.empresa)
+    formas = FormaPagamento.objects.filter(empresa=request.user.empresa)
+    return render(request, 'financeiro/formas_pagamento_list.html', {'formas': formas})
+
+
+@login_required
+def adicionar_forma_pagamento(request):
+    if request.method == 'POST':
+        form = FormaPagamentoForm(request.POST, user=request.user)
+        if form.is_valid():
+            forma = form.save(commit=False)
+            forma.empresa = request.user.empresa
+            forma.save()
+            messages.success(request, "Forma de pagamento adicionada!")
+            return redirect('financeiro:lista_formas_pagamento')
+    else:
+        form = FormaPagamentoForm(user=request.user)
+    return render(request, 'financeiro/forma_pagamento_form.html', {'form': form, 'titulo': 'Nova Forma de Pagamento'})
+
+
+@login_required
+def editar_forma_pagamento(request, id):
+    forma = get_object_or_404(FormaPagamento, id=id, empresa=request.user.empresa)
+    if request.method == 'POST':
+        form = FormaPagamentoForm(request.POST, instance=forma, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Forma de pagamento atualizada!")
+            return redirect('financeiro:lista_formas_pagamento')
+    else:
+        form = FormaPagamentoForm(instance=forma, user=request.user)
+    return render(request, 'financeiro/forma_pagamento_form.html', {'form': form, 'titulo': f'Editar {forma.nome}'})
+
+
+@login_required
+def excluir_forma_pagamento(request, id):
+    forma = get_object_or_404(FormaPagamento, id=id, empresa=request.user.empresa)
+    if forma.lancamento_set.exists():
+        messages.error(request, "Não é possível excluir: existem lançamentos usando esta forma de pagamento.")
+    else:
+        forma.delete()
+        messages.success(request, "Forma de pagamento excluída.")
+    return redirect('financeiro:lista_formas_pagamento')
 
 
 # ==========================================================
@@ -155,12 +205,15 @@ def lista_contas_receber(request):
 
     # Dados para os Dropdowns
     caixas = Caixa.objects.filter(empresa=request.user.empresa)
+    # Formas de pagamento para o modal de baixa (cria as padrão se preciso)
+    formas_pagamento = garantir_formas_padrao(request.user.empresa)
     # Carrega apenas categorias de RECEITA para o filtro
     categorias = PlanoDeContas.objects.filter(empresa=request.user.empresa, tipo='R').order_by('nome')
     
     return render(request, 'financeiro/contas_lista.html', {
         'contas': contas.order_by('data_vencimento'), 
         'caixas': caixas,
+        'formas_pagamento': formas_pagamento,
         'categorias': categorias, # Envia para o template
         'titulo': 'Contas a Receber',
         'tipo_lista': 'receber',
@@ -203,12 +256,15 @@ def lista_contas_pagar(request):
         contas = contas.filter(plano_de_contas_id=categoria_id)
 
     caixas = Caixa.objects.filter(empresa=request.user.empresa)
+    # Formas de pagamento para o modal de baixa (cria as padrão se preciso)
+    formas_pagamento = garantir_formas_padrao(request.user.empresa)
     # Carrega apenas categorias de DESPESA para o filtro
     categorias = PlanoDeContas.objects.filter(empresa=request.user.empresa, tipo='D').order_by('nome')
     
     return render(request, 'financeiro/contas_lista.html', {
         'contas': contas.order_by('data_vencimento'), 
         'caixas': caixas,
+        'formas_pagamento': formas_pagamento,
         'categorias': categorias,
         'titulo': 'Contas a Pagar',
         'tipo_lista': 'pagar',
@@ -337,24 +393,37 @@ def baixar_conta(request, id):
     if request.method == 'POST':
         caixa_id = request.POST.get('caixa')
         data_pagamento = request.POST.get('data_pagamento')
+        forma_id = request.POST.get('forma_pagamento')
         
         if not caixa_id or not data_pagamento:
             messages.error(request, "Preencha todos os campos da baixa.")
             return redirect('financeiro:lista_receber' if conta.plano_de_contas.tipo == 'R' else 'financeiro:lista_pagar')
 
+        if not forma_id:
+            messages.error(request, "Selecione a forma de pagamento da baixa.")
+            return redirect('financeiro:lista_receber' if conta.plano_de_contas.tipo == 'R' else 'financeiro:lista_pagar')
+
         caixa = get_object_or_404(Caixa, id=caixa_id, empresa=request.user.empresa)
+        forma = get_object_or_404(FormaPagamento, id=forma_id, empresa=request.user.empresa)
 
         # Mapeia o tipo do Plano (R/D) para o tipo do Lançamento (C/D)
         # R (Receita) -> C (Crédito)
         # D (Despesa) -> D (Débito)
         tipo_lancamento = 'C' if conta.plano_de_contas.tipo == 'R' else 'D'
 
+        # 2) Inclui o nome do cliente/fornecedor na descrição do lançamento
+        if conta.cadastro:
+            descricao_lancamento = f"Baixa: {conta.cadastro.nome} - {conta.descricao}"
+        else:
+            descricao_lancamento = f"Baixa: {conta.descricao}"
+
         Lancamento.objects.create(
             empresa=request.user.empresa,
             caixa=caixa,
             plano_de_contas=conta.plano_de_contas,
+            forma_pagamento=forma,
             conta_origem=conta,
-            descricao=f"Baixa: {conta.descricao}",
+            descricao=descricao_lancamento,
             data_lancamento=data_pagamento,
             valor=conta.valor,
             tipo=tipo_lancamento

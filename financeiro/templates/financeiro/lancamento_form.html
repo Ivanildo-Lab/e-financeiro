@@ -47,9 +47,18 @@
         </div>
 
         <!-- Linha 3: Categoria e Descrição -->
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Plano de Contas (Categoria)</label>
-            {{ form.plano_de_contas }}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Plano de Contas (Categoria)</label>
+                {{ form.plano_de_contas }}
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento *</label>
+                {{ form.forma_pagamento }}
+                {% if form.forma_pagamento.errors %}
+                    <p class="text-xs text-red-600 mt-1">{{ form.forma_pagamento.errors.0 }}</p>
+                {% endif %}
+            </div>
         </div>
 
         <div class="mb-6">
