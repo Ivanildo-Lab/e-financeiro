@@ -198,10 +198,18 @@
 
             <!-- Lado Direito Header -->
             <div class="flex items-center space-x-6">
-                <!-- Nome da Empresa -->
-                <div class="hidden md:flex flex-col items-end">
-                    <span class="font-bold text-sm tracking-wide">{{ user.empresa.nome|default:"Sem Empresa" }}</span>
-                    <span class="text-[10px] text-blue-100 opacity-80 font-mono">CNPJ: {{ user.empresa.cnpj }}</span>
+                <!-- Logo + Nome da Empresa -->
+                <div class="hidden md:flex items-center gap-3">
+                    {% if user.empresa.logo %}
+                        <img src="{{ user.empresa.logo.url }}"
+                             alt="{{ user.empresa.nome|default:'Empresa' }}"
+                             class="h-9 w-9 object-contain rounded bg-white/15 p-1 shadow-md"
+                             title="{{ user.empresa.nome|default:'' }}">
+                    {% endif %}
+                    <div class="flex flex-col items-end">
+                        <span class="font-bold text-sm tracking-wide">{{ user.empresa.nome|default:"Sem Empresa" }}</span>
+                        <span class="text-[10px] text-blue-100 opacity-80 font-mono">CNPJ: {{ user.empresa.cnpj }}</span>
+                    </div>
                 </div>
 
                 <!-- MENU DO PERFIL / LOGOUT (COM JS ONCLICK) -->
