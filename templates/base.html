@@ -203,7 +203,7 @@
                     {% if user.empresa.logo %}
                         <img src="{{ user.empresa.logo.url }}"
                              alt="{{ user.empresa.nome|default:'Empresa' }}"
-                             class="h-9 w-9 object-contain rounded bg-white/15 p-1 shadow-md"
+                             class="w-9 h-14 object-contain rounded-md bg-white/15 shadow-md shrink-0"
                              title="{{ user.empresa.nome|default:'' }}">
                     {% endif %}
                     <div class="flex flex-col items-end">
