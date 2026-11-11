@@ -2,8 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
-from .models import Cadastro, CategoriaCliente
-from .forms import CadastroForm
+from .models import Cadastro, CategoriaCliente, EventoVencimento
+from .forms import CadastroForm, EventoVencimentoForm
 
 # ==================================================
 # GESTÃO DE CLIENTES (Sócios / Alunos / Clientes)
@@ -136,7 +136,8 @@ def editar_cadastro(request, id):
     return render(request, 'cadastros/formulario.html', {
         'form': form, 
         'titulo': f'Editar {cadastro.nome}',
-        'url_cancelar': rota_retorno
+        'url_cancelar': rota_retorno,
+        'eventos': cadastro.eventos.all(),
     })
 
 @login_required
@@ -152,3 +153,36 @@ def excluir_cadastro(request, id):
         messages.success(request, "Cadastro excluído com sucesso.")
     
     return redirect(tipo_redirect)
+
+
+# ==================================================
+# EVENTOS / VENCIMENTOS DO CLIENTE
+# ==================================================
+
+@login_required
+def adicionar_evento(request, id):
+    """Adiciona um evento/vencimento vinculado ao cadastro (via POST separado)."""
+    cadastro = get_object_or_404(Cadastro, id=id, empresa=request.user.empresa)
+
+    if request.method == 'POST':
+        form = EventoVencimentoForm(request.POST)
+        if form.is_valid():
+            evento = form.save(commit=False)
+            evento.cadastro = cadastro
+            evento.empresa = request.user.empresa
+            evento.save()
+            messages.success(request, f"Evento '{evento.descricao}' adicionado com sucesso!")
+        else:
+            messages.error(request, "Não foi possível adicionar o evento. Verifique os campos.")
+
+    return redirect('editar_cadastro', id=cadastro.id)
+
+
+@login_required
+def excluir_evento(request, id):
+    """Exclui um evento/vencimento (só da empresa do usuário)."""
+    evento = get_object_or_404(EventoVencimento, id=id, empresa=request.user.empresa)
+    cadastro_id = evento.cadastro_id
+    evento.delete()
+    messages.success(request, "Evento excluído com sucesso.")
+    return redirect('editar_cadastro', id=cadastro_id)

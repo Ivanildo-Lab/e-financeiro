@@ -80,3 +80,38 @@ class Cadastro(ModeloSaaS):
         verbose_name_plural = "Cadastros"
         ordering = ['nome']
         unique_together = [['empresa', 'cpf_cnpj']] # CPF/CNPJ único por empresa
+
+
+class EventoVencimento(ModeloSaaS):
+    """
+    Controle de vencimento de eventos/documentos dos clientes.
+    Ex: CNH vencendo em 30/12/2030, exame médico, contrato, etc.
+    """
+    cadastro = models.ForeignKey(
+        Cadastro,
+        on_delete=models.CASCADE,
+        related_name='eventos',
+        verbose_name="Cliente",
+    )
+    descricao = models.CharField(max_length=255, verbose_name="Descrição do Evento")
+    data_validade = models.DateField(verbose_name="Data de Validade")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.descricao} - {self.cadastro.nome}"
+
+    @property
+    def dias_restantes(self):
+        """Dias até o vencimento (negativo = já vencido)."""
+        from datetime import date
+        return (self.data_validade - date.today()).days
+
+    @property
+    def dias_abs(self):
+        """Módulo dos dias (para exibir "HÁ X DIAS")."""
+        return abs(self.dias_restantes)
+
+    class Meta:
+        verbose_name = "Evento / Vencimento"
+        verbose_name_plural = "Eventos / Vencimentos"
+        ordering = ['data_validade']

@@ -17,4 +17,8 @@ urlpatterns = [
     
     # Rota padrão: se acessar /cadastros/, vai para clientes
     path('', views.lista_clientes, name='lista_cadastros_padrao'),
+
+    # --- EVENTOS / VENCIMENTOS ---
+    path('eventos/adicionar/<int:id>/', views.adicionar_evento, name='adicionar_evento'),
+    path('eventos/excluir/<int:id>/', views.excluir_evento, name='excluir_evento'),
 ]

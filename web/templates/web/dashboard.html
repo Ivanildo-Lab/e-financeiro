@@ -119,6 +119,65 @@
 
 </div>
 
+<!-- 2. EVENTOS A VENCER (próximos 30 dias) -->
+<div class="mt-8 bg-white rounded-lg shadow border-t-4 border-orange-500">
+    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-700">
+            <i class="fa fa-calendar-check mr-2 text-orange-500"></i> Eventos a Vencer
+            <span class="text-xs font-normal text-gray-500">(vencidos e próximos 30 dias)</span>
+        </h3>
+        {% if eventos_vencer %}
+        <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+            {{ eventos_vencer|length }} evento{{ eventos_vencer|length|pluralize }}
+        </span>
+        {% endif %}
+    </div>
+    <div class="p-0">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Evento</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Vencimento</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for evento in eventos_vencer %}
+                <tr class="hover:bg-orange-50 transition">
+                    <td class="px-4 py-3">
+                        <a href="{% url 'editar_cadastro' evento.cadastro.id %}" class="font-bold text-gray-800 text-sm hover:text-orange-700 hover:underline">
+                            {{ evento.cadastro.nome }}
+                        </a>
+                        {% if evento.cadastro.celular %}
+                        <div class="text-xs text-gray-500"><i class="fa fa-phone mr-1"></i>{{ evento.cadastro.celular }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-700">{{ evento.descricao }}</td>
+                    <td class="px-4 py-3 text-center text-sm font-mono text-gray-700">{{ evento.data_validade|date:"d/m/Y" }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if evento.dias_restantes < 0 %}
+                            <span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">VENCIDO HÁ {{ evento.dias_abs }} DIA(S)</span>
+                        {% elif evento.dias_restantes == 0 %}
+                            <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold">VENCE HOJE</span>
+                        {% else %}
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-bold">FALTAM {{ evento.dias_restantes }} DIA(S)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fa fa-smile text-4xl mb-2 text-green-400 block"></i>
+                        Nenhum evento nos próximos 30 dias. Tudo em dia!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {{ grafico_labels|json_script:"grafico_labels" }}

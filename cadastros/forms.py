@@ -1,5 +1,21 @@
 from django import forms
-from .models import Cadastro, CategoriaCliente
+from .models import Cadastro, CategoriaCliente, EventoVencimento
+
+
+class EventoVencimentoForm(forms.ModelForm):
+    class Meta:
+        model = EventoVencimento
+        fields = ['descricao', 'data_validade']
+        widgets = {
+            'data_validade': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        estilo = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors'
+        for field in self.fields.values():
+            field.widget.attrs['class'] = estilo
+
 
 class CadastroForm(forms.ModelForm):
     class Meta:

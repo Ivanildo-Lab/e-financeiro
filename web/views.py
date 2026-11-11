@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q
 from django.utils import timezone
 from datetime import timedelta
-from cadastros.models import Cadastro
+from cadastros.models import Cadastro, EventoVencimento
 from financeiro.models import Lancamento, Conta
 
 # ==========================================
@@ -93,6 +93,13 @@ def dashboard(request):
         dados_receita.append(float(r))
         dados_despesa.append(abs(float(d)))
 
+    # 5. EVENTOS A VENCER (próximos 30 dias — inclui os já vencidos)
+    limite_eventos = hoje + timedelta(days=30)
+    eventos_vencer = EventoVencimento.objects.filter(
+        empresa=empresa,
+        data_validade__lte=limite_eventos,
+    ).select_related('cadastro').order_by('data_validade')[:15]
+
     context = {
         'total_clientes': total_clientes,
         'ativos': ativos,
@@ -101,6 +108,7 @@ def dashboard(request):
         'saldo': saldo_mes,
         'ultimos_pagamentos': ultimos_pagamentos,
         'contas_atrasadas': contas_atrasadas,
+        'eventos_vencer': eventos_vencer,
         'grafico_labels': labels_grafico,
         'grafico_receita': dados_receita,
         'grafico_despesa': dados_despesa,

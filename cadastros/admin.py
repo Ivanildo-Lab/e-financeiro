@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cadastro, CategoriaCliente
+from .models import Cadastro, CategoriaCliente, EventoVencimento
 
 # 1. Categoria de Clientes (Simples)
 @admin.register(CategoriaCliente)
@@ -39,7 +39,7 @@ class CadastroAdmin(admin.ModelAdmin):
             'fields': ('empresa', 'papel', 'categoria', 'situacao')
         }),
         ('Identificação', {
-            'fields': ('tipo_pessoa', 'nome', 'razao_social', 'cpf_cnpj', 'rg_ie', 'data_nascimento')
+            'fields': ('tipo_pessoa', 'nome', 'razao_social', 'cpf_cnpj', 'rg', 'inscricao_estadual', 'data_nascimento')
         }),
         ('Contato', {
             'fields': ('email', 'celular', 'telefone_fixo')
@@ -74,3 +74,23 @@ class CadastroAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return qs
         return qs.filter(empresa=request.user.empresa)
+
+
+# 3. Eventos / Vencimentos (CNH, contratos, exames...)
+@admin.register(EventoVencimento)
+class EventoVencimentoAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'cadastro', 'descricao', 'data_validade')
+    list_filter = ('empresa',)
+    search_fields = ('descricao', 'cadastro__nome')
+    date_hierarchy = 'data_validade'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(empresa=request.user.empresa)
+
+    def save_model(self, request, obj, form, change):
+        if not obj.empresa_id and not request.user.is_superuser:
+            obj.empresa = request.user.empresa
+        super().save_model(request, obj, form, change)
