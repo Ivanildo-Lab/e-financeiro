@@ -9,6 +9,7 @@ from django.utils.dateparse import parse_date
 from .models import Conta, Lancamento, Caixa, PlanoDeContas, FormaPagamento, garantir_formas_padrao
 from .forms import ContaForm, LancamentoManualForm, CaixaForm, PlanoContasForm, FormaPagamentoForm
 from core.models import ParametroSistema
+from django.db.models import Sum, Count, Q
 from decimal import Decimal
 import calendar
 import random
@@ -694,6 +695,35 @@ def relatorio_fluxo(request):
     # ===> SALDO FINAL REAL
     saldo_final = saldo_anterior + resultado_periodo
 
+    # =======================================================
+    # 5. RESUMO POR FORMA DE PAGAMENTO (NO PERÍODO)
+    # =======================================================
+    linhas_formas = (
+        lancamentos.values('forma_pagamento__nome')
+        .annotate(
+            qtd=Count('id'),
+            entradas=Sum('valor', filter=Q(tipo='C')),
+            saidas=Sum('valor', filter=Q(tipo='D')),
+            total=Sum('valor'),
+        )
+        .order_by('-total')
+    )
+
+    resumo_formas = []
+    for linha in linhas_formas:
+        resumo_formas.append({
+            'nome': linha['forma_pagamento__nome'] or 'Não informada',
+            'qtd': linha['qtd'],
+            'entradas': linha['entradas'] or 0,
+            'saidas': abs(linha['saidas'] or 0),
+            'total': linha['total'] or 0,
+        })
+
+    total_qtd_formas = sum(r['qtd'] for r in resumo_formas)
+    total_entradas_formas = sum(r['entradas'] for r in resumo_formas)
+    total_saidas_formas = sum(r['saidas'] for r in resumo_formas)
+    total_geral_formas = total_entradas_formas - total_saidas_formas
+
     return render(request, 'financeiro/relatorio_impresso.html', {
         'data_inicio': data_inicio,
         'data_fim': data_fim,
@@ -707,6 +737,13 @@ def relatorio_fluxo(request):
         'total_despesas': total_despesas,
         'resultado_periodo': resultado_periodo,
         'saldo_final': saldo_final,
+
+        # Resumo por forma de pagamento
+        'resumo_formas': resumo_formas,
+        'total_qtd_formas': total_qtd_formas,
+        'total_entradas_formas': total_entradas_formas,
+        'total_saidas_formas': total_saidas_formas,
+        'total_geral_formas': total_geral_formas,
         
         'empresa': request.user.empresa,
     })
