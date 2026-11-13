@@ -1,7 +1,13 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils.formats import number_format
 from core.models import ModeloSaaS
 from cadastros.models import Cadastro
+
+
+def brl(valor):
+    """Formata um valor no padrão brasileiro da moeda: R$ 1.234,34."""
+    return f"R$ {number_format(valor)}"
 
 
 class Funcionario(ModeloSaaS):
@@ -81,8 +87,8 @@ class OrdemServico(ModeloSaaS):
         if self.status == 'FECHADA':
             if self.remuneracao_total != self.valor_total:
                 raise ValidationError(
-                    f"A remuneração dos funcionários (R$ {self.remuneracao_total:.2f}) "
-                    f"não confere com o valor total dos serviços (R$ {self.valor_total:.2f}). "
+                    f"A remuneração dos funcionários ({brl(self.remuneracao_total)}) "
+                    f"não confere com o valor total dos serviços ({brl(self.valor_total)}). "
                     f"Ajuste antes de fechar a OS."
                 )
 
@@ -122,7 +128,7 @@ class ServicoOS(models.Model):
     valor = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor (R$)")
 
     def __str__(self):
-        return f"{self.descricao} — R$ {self.valor:.2f}"
+        return f"{self.descricao} — {brl(self.valor)}"
 
     class Meta:
         verbose_name = "Serviço da OS"
@@ -140,7 +146,7 @@ class FuncionarioOS(models.Model):
                                              verbose_name="Remuneração (R$)")
 
     def __str__(self):
-        return f"{self.funcionario.nome} — R$ {self.valor_remuneracao:.2f}"
+        return f"{self.funcionario.nome} — {brl(self.valor_remuneracao)}"
 
     class Meta:
         verbose_name = "Funcionário da OS"
@@ -190,7 +196,7 @@ class MetaFuncionario(ModeloSaaS):
         return 'MUITO_BAIXO'
 
     def __str__(self):
-        return f"{self.funcionario.nome} — {self.get_mes_display()}/{self.ano} — R$ {self.meta_valor:.2f}"
+        return f"{self.funcionario.nome} — {self.get_mes_display()}/{self.ano} — {brl(self.meta_valor)}"
 
     class Meta:
         verbose_name = "Meta do Funcionário"

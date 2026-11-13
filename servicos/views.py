@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from core.models import ParametroSistema
 from financeiro.models import Conta, Lancamento, Caixa, PlanoDeContas
 
-from .models import Funcionario, OrdemServico, ServicoOS, FuncionarioOS, MetaFuncionario
+from .models import Funcionario, OrdemServico, ServicoOS, FuncionarioOS, MetaFuncionario, brl
 from .forms import (
     FuncionarioForm, OrdemServicoForm, ServicoOSForm, FuncionarioOSForm,
     FecharOSForm, MetaFuncionarioForm,
@@ -392,7 +392,7 @@ def fechar_os(request, id):
     if remuneracao_total != valor_total:
         messages.error(
             request,
-            f"A remuneração (R$ {remuneracao_total:.2f}) não confere com o valor total (R$ {valor_total:.2f}). "
+            f"A remuneração ({brl(remuneracao_total)}) não confere com o valor total ({brl(valor_total)}). "
             f"Ajuste antes de fechar."
         )
         return redirect('servicos:detalhe_os', id=os_obj.id)

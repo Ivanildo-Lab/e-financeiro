@@ -185,6 +185,10 @@ TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
+# Separação de milhar na formatação de números (R$ 1.234,34 em vez de R$ 1234,34)
+# Afeta todos os templates que usam |floatformat e django.utils.formats.number_format
+USE_THOUSAND_SEPARATOR = True
+
 USE_TZ = True
 
 
