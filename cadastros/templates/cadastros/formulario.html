@@ -210,6 +210,12 @@
         <a href="{% url url_cancelar|default:'lista_clientes' %}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded shadow transition">
             Cancelar
         </a>
+        {% if form.instance.pk %}
+        <a href="{% url 'imprimir_ficha' form.instance.pk %}" target="_blank"
+           class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-6 rounded shadow transition">
+            <i class="fa fa-print mr-2"></i> Imprimir Ficha
+        </a>
+        {% endif %}
     </div>
 </form>
 

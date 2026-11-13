@@ -14,6 +14,7 @@ urlpatterns = [
     # A edição é a mesma para os dois, pois a view sabe redirecionar de volta
     path('editar/<int:id>/', views.editar_cadastro, name='editar_cadastro'),
     path('excluir/<int:id>/', views.excluir_cadastro, name='excluir_cadastro'),
+    path('ficha/<int:id>/', views.imprimir_ficha, name='imprimir_ficha'),
     
     # Rota padrão: se acessar /cadastros/, vai para clientes
     path('', views.lista_clientes, name='lista_cadastros_padrao'),

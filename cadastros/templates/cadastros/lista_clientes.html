@@ -126,6 +126,9 @@
                             <a href="{% url 'editar_cadastro' c.id %}" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-full transition hover:bg-indigo-100" title="Editar">
                                 <i class="fa fa-pencil-alt"></i>
                             </a>
+                            <a href="{% url 'imprimir_ficha' c.id %}" target="_blank" class="text-teal-600 hover:text-teal-900 bg-teal-50 p-2 rounded-full transition hover:bg-teal-100" title="Imprimir ficha de cadastro">
+                                <i class="fa fa-print"></i>
+                            </a>
                             <a href="{% url 'excluir_cadastro' c.id %}" onclick="return confirm('Tem certeza que deseja excluir {{ c.nome }}?')" class="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-full transition hover:bg-red-100" title="Excluir">
                                 <i class="fa fa-trash"></i>
                             </a>

@@ -156,6 +156,22 @@ def excluir_cadastro(request, id):
 
 
 # ==================================================
+# IMPRESSÃO DA FICHA DE CADASTRO
+# ==================================================
+
+@login_required
+def imprimir_ficha(request, id):
+    """Ficha de cadastro para impressão/arquivamento (espelho do formulário)."""
+    cadastro = get_object_or_404(Cadastro, id=id, empresa=request.user.empresa)
+    return render(request, 'cadastros/ficha_impressa.html', {
+        'c': cadastro,
+        'eventos': cadastro.eventos.all(),
+        'empresa': request.user.empresa,
+        'voltar_para': 'lista_fornecedores' if cadastro.papel == 'FOR' else 'lista_clientes',
+    })
+
+
+# ==================================================
 # EVENTOS / VENCIMENTOS DO CLIENTE
 # ==================================================
 
