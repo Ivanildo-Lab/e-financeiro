@@ -15,11 +15,37 @@ from .forms import (
     FecharOSForm, MetaFuncionarioForm,
 )
 
+from functools import wraps
+
+
+def servicos_liberado(view_func):
+    """
+    Bloqueia o módulo de Serviços para empresas/usuários não autorizados.
+
+    - Superusuários sempre têm acesso;
+    - Demais usuários só acessam se a empresa tiver
+      `Empresa.liberado_servicos = True`;
+    - Redireciona para o dashboard com aviso caso contrário.
+    """
+    @wraps(view_func)
+    @login_required
+    def _wrapped(request, *args, **kwargs):
+        empresa = getattr(request.user, 'empresa', None)
+        if request.user.is_superuser or (empresa and empresa.liberado_servicos):
+            return view_func(request, *args, **kwargs)
+        messages.warning(
+            request,
+            "O módulo de Ordens de Serviço não está liberado para esta empresa. "
+            "Entre em contato com o administrador para liberar o acesso.",
+        )
+        return redirect('dashboard')
+    return _wrapped
+
 
 # ==========================================================
 # 1. CRUD DE FUNCIONÁRIOS
 # ==========================================================
-@login_required
+@servicos_liberado
 def lista_funcionarios(request):
     q = request.GET.get('q', '')
     status_filtro = request.GET.get('status', '')
@@ -37,7 +63,7 @@ def lista_funcionarios(request):
     })
 
 
-@login_required
+@servicos_liberado
 def novo_funcionario(request):
     if request.method == 'POST':
         form = FuncionarioForm(request.POST, user=request.user)
@@ -52,7 +78,7 @@ def novo_funcionario(request):
     return render(request, 'servicos/funcionario_form.html', {'form': form, 'editar': False})
 
 
-@login_required
+@servicos_liberado
 def editar_funcionario(request, id):
     obj = get_object_or_404(Funcionario, id=id, empresa=request.user.empresa)
     if request.method == 'POST':
@@ -66,7 +92,7 @@ def editar_funcionario(request, id):
     return render(request, 'servicos/funcionario_form.html', {'form': form, 'editar': True})
 
 
-@login_required
+@servicos_liberado
 def excluir_funcionario(request, id):
     obj = get_object_or_404(Funcionario, id=id, empresa=request.user.empresa)
     if obj.funcionarioos_set.exists():
@@ -80,7 +106,7 @@ def excluir_funcionario(request, id):
 # ==========================================================
 # 2. CRUD DE ORDENS DE SERVIÇO
 # ==========================================================
-@login_required
+@servicos_liberado
 def lista_ordens(request):
     q = request.GET.get('q', '')
     status_filtro = request.GET.get('status', '')
@@ -125,7 +151,7 @@ def lista_ordens(request):
     })
 
 
-@login_required
+@servicos_liberado
 def nova_os(request):
     if request.method == 'POST':
         form = OrdemServicoForm(request.POST, user=request.user)
@@ -140,7 +166,7 @@ def nova_os(request):
     return render(request, 'servicos/os_form.html', {'form': form, 'editar': False})
 
 
-@login_required
+@servicos_liberado
 def editar_os(request, id):
     obj = get_object_or_404(OrdemServico, id=id, empresa=request.user.empresa)
     if request.method == 'POST':
@@ -154,7 +180,7 @@ def editar_os(request, id):
     return render(request, 'servicos/os_form.html', {'form': form, 'editar': True, 'os': obj})
 
 
-@login_required
+@servicos_liberado
 def excluir_os(request, id):
     obj = get_object_or_404(OrdemServico, id=id, empresa=request.user.empresa)
     if obj.status == 'FECHADA':
@@ -165,7 +191,7 @@ def excluir_os(request, id):
     return redirect('servicos:lista_ordens')
 
 
-@login_required
+@servicos_liberado
 def detalhe_os(request, id):
     """Tela principal da OS — exibe serviços, funcionários e permite ações"""
     os_obj = get_object_or_404(OrdemServico, id=id, empresa=request.user.empresa)
@@ -209,7 +235,7 @@ def detalhe_os(request, id):
 # ==========================================================
 # 3. AÇÕES INLINE NA OS (Serviços e Funcionários)
 # ==========================================================
-@login_required
+@servicos_liberado
 def adicionar_servico_os(request, os_id):
     os_obj = get_object_or_404(OrdemServico, id=os_id, empresa=request.user.empresa)
     if os_obj.status not in ('ABERTA', 'CONCLUIDA'):
@@ -226,7 +252,7 @@ def adicionar_servico_os(request, os_id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def editar_servico_os(request, id):
     servico = get_object_or_404(ServicoOS, id=id, ordem_servico__empresa=request.user.empresa)
     os_obj = servico.ordem_servico
@@ -242,7 +268,7 @@ def editar_servico_os(request, id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def excluir_servico_os(request, id):
     servico = get_object_or_404(ServicoOS, id=id, ordem_servico__empresa=request.user.empresa)
     os_obj = servico.ordem_servico
@@ -255,7 +281,7 @@ def excluir_servico_os(request, id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def adicionar_funcionario_os(request, os_id):
     os_obj = get_object_or_404(OrdemServico, id=os_id, empresa=request.user.empresa)
     if os_obj.status not in ('ABERTA', 'CONCLUIDA'):
@@ -272,7 +298,7 @@ def adicionar_funcionario_os(request, os_id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def editar_funcionario_os(request, id):
     func_os = get_object_or_404(FuncionarioOS, id=id, ordem_servico__empresa=request.user.empresa)
     os_obj = func_os.ordem_servico
@@ -288,7 +314,7 @@ def editar_funcionario_os(request, id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def excluir_funcionario_os(request, id):
     func_os = get_object_or_404(FuncionarioOS, id=id, ordem_servico__empresa=request.user.empresa)
     os_obj = func_os.ordem_servico
@@ -304,7 +330,7 @@ def excluir_funcionario_os(request, id):
 # ==========================================================
 # 4. WORKFLOW DE STATUS
 # ==========================================================
-@login_required
+@servicos_liberado
 def concluir_os(request, id):
     """Marca OS como CONCLUIDA"""
     os_obj = get_object_or_404(OrdemServico, id=id, empresa=request.user.empresa)
@@ -326,7 +352,7 @@ def concluir_os(request, id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def cancelar_os(request, id):
     """Cancela uma OS"""
     os_obj = get_object_or_404(OrdemServico, id=id, empresa=request.user.empresa)
@@ -343,7 +369,7 @@ def cancelar_os(request, id):
     return redirect('servicos:detalhe_os', id=os_obj.id)
 
 
-@login_required
+@servicos_liberado
 def fechar_os(request, id):
     """Fecha a OS e gera o financeiro (Contas a Receber ou Baixa no Caixa)"""
     os_obj = get_object_or_404(OrdemServico, id=id, empresa=request.user.empresa)
@@ -465,7 +491,7 @@ def fechar_os(request, id):
 # ==========================================================
 # 5. CRUD DE METAS
 # ==========================================================
-@login_required
+@servicos_liberado
 def lista_metas(request):
     mes_atual = int(request.GET.get('mes', date.today().month))
     ano_atual = int(request.GET.get('ano', date.today().year))
@@ -502,7 +528,7 @@ def lista_metas(request):
     })
 
 
-@login_required
+@servicos_liberado
 def nova_meta(request):
     if request.method == 'POST':
         form = MetaFuncionarioForm(request.POST, user=request.user)
@@ -520,7 +546,7 @@ def nova_meta(request):
     return render(request, 'servicos/meta_form.html', {'form': form, 'editar': False})
 
 
-@login_required
+@servicos_liberado
 def editar_meta(request, id):
     obj = get_object_or_404(MetaFuncionario, id=id, empresa=request.user.empresa)
     if request.method == 'POST':
@@ -534,7 +560,7 @@ def editar_meta(request, id):
     return render(request, 'servicos/meta_form.html', {'form': form, 'editar': True})
 
 
-@login_required
+@servicos_liberado
 def excluir_meta(request, id):
     obj = get_object_or_404(MetaFuncionario, id=id, empresa=request.user.empresa)
     obj.delete()
@@ -545,7 +571,7 @@ def excluir_meta(request, id):
 # ==========================================================
 # 6. RELATÓRIOS
 # ==========================================================
-@login_required
+@servicos_liberado
 def relatorio_mensal(request, ano, mes):
     """Relatório mensal: meta vs realizado por funcionário"""
     funcionarios = Funcionario.objects.filter(empresa=request.user.empresa, ativo=True)
@@ -597,7 +623,7 @@ def relatorio_mensal(request, ano, mes):
     })
 
 
-@login_required
+@servicos_liberado
 def relatorio_anual(request, ano):
     """Relatório anual: evolução mês a mês da empresa"""
     meses_nomes = [

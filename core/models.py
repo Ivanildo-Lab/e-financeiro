@@ -8,6 +8,12 @@ class Empresa(models.Model):
     ativo = models.BooleanField(default=True)
     logo = models.ImageField(upload_to='empresas/logos/', null=True, blank=True)
     banner = models.ImageField(upload_to='empresas/banners/', null=True, blank=True, help_text="Imagem de fundo da tela inicial")
+    liberado_servicos = models.BooleanField(
+        default=False,
+        verbose_name="Liberado: Ordens de Serviço?",
+        help_text="Se marcado, o módulo Serviços (Ordens de Serviço, Funcionários, Metas) "
+                  "aparece no menu para os usuários desta empresa.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

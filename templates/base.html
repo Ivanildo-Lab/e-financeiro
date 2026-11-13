@@ -138,7 +138,8 @@
                     </ul>
                 </li>
 
-                <!-- 4. SERVIÇOS (MENU DROP-DOWN) -->
+                <!-- 4. SERVIÇOS (MENU DROP-DOWN - SÓ PARA EMPRESAS/USUÁRIOS AUTORIZADOS) -->
+                {% if user.is_superuser or user.empresa.liberado_servicos %}
                 <li>
                     <button type="button" onclick="toggleMenu('servicos-menu')" class="w-full flex items-center justify-between py-3 px-4 text-gray-300 hover:text-white sidebar-hover transition-all focus:outline-none {% if '/servicos/' in request.path %}text-white bg-black/10{% endif %}">
                         <div class="flex items-center">
@@ -177,6 +178,7 @@
                         </li>
                     </ul>
                 </li>
+                {% endif %}
             </ul>
         </nav>
     </aside>

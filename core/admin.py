@@ -12,9 +12,10 @@ class ParametroSistemaAdmin(admin.ModelAdmin):
 # 1. Configuração para gerenciar Empresas
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'cnpj', 'ativo', 'created_at')
+    list_display = ('nome', 'cnpj', 'liberado_servicos', 'ativo', 'created_at')
+    list_editable = ('liberado_servicos', 'ativo')
+    list_filter = ('ativo', 'liberado_servicos')
     search_fields = ('nome', 'cnpj')
-    list_filter = ('ativo',)
 
 # 2. Configuração para gerenciar Usuários
 # Precisamos customizar para mostrar o campo 'empresa' dentro do cadastro do usuário
