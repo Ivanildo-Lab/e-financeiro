@@ -443,6 +443,30 @@ def baixar_conta(request, id):
     return redirect('financeiro:lista_receber')
 
 
+@login_required
+def estornar_baixa(request, id):
+    """
+    Estorna a baixa de uma conta a pagar/receber: apaga o lançamento
+    gerado pela baixa e devolve a conta para PENDENTE (correção de erros).
+    """
+    conta = get_object_or_404(Conta, id=id, empresa=request.user.empresa)
+    tipo_redirect = 'financeiro:lista_receber' if conta.plano_de_contas.tipo == 'R' else 'financeiro:lista_pagar'
+
+    if conta.status != 'PAGA':
+        messages.error(request, "Só é possível estornar contas com baixa realizada.")
+        return redirect(tipo_redirect)
+
+    lancamento = Lancamento.objects.filter(empresa=request.user.empresa, conta_origem=conta).first()
+    if lancamento:
+        lancamento.delete()
+
+    conta.status = 'PENDENTE'
+    conta.save()
+
+    messages.success(request, "Baixa estornada com sucesso! A conta voltou para 'Pendente'.")
+    return redirect(tipo_redirect)
+
+
 # ==========================================================
 # 4. FLUXO DE CAIXA E RELATÓRIOS
 # ==========================================================

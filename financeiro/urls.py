@@ -27,6 +27,7 @@ urlpatterns = [
 
     # AÇÕES COMUNS (Editar/Baixar/Excluir servem para ambos)
     path('contas/baixar/<int:id>/', views.baixar_conta, name='baixar_conta'),
+    path('contas/estornar/<int:id>/', views.estornar_baixa, name='estornar_baixa'),
     path('contas/editar/<int:id>/', views.editar_conta, name='editar_conta'),
     path('contas/excluir/<int:id>/', views.excluir_conta, name='excluir_conta'),
 
