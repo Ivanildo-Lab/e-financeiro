@@ -95,6 +95,12 @@ class Conta(ModeloSaaS):
     def __str__(self):
         return f"{self.descricao} - {self.data_vencimento}"
 
+    @property
+    def data_pagamento(self):
+        """Data em que a conta foi baixada (primeiro lançamento da baixa)."""
+        lancamento = self.lancamentos_baixa.order_by('data_lancamento', 'id').first()
+        return lancamento.data_lancamento if lancamento else None
+
 
 class Lancamento(ModeloSaaS):
     """
@@ -116,8 +122,10 @@ class Lancamento(ModeloSaaS):
         verbose_name="Forma de Pagamento",
     )
     
-    # Se veio de uma conta a pagar/receber, vinculamos aqui
-    conta_origem = models.OneToOneField(Conta, on_delete=models.SET_NULL, null=True, blank=True, related_name="lancamento_caixa")
+    # Se veio de uma conta a pagar/receber, vinculamos aqui.
+    # ForeignKey (e não OneToOne): uma baixa pode usar VÁRIAS formas de
+    # pagamento e gera um lançamento para cada forma.
+    conta_origem = models.ForeignKey(Conta, on_delete=models.SET_NULL, null=True, blank=True, related_name="lancamentos_baixa")
     
     # ATENÇÃO: O nome do campo é 'data_lancamento'
     data_lancamento = models.DateField(verbose_name="Data do Movimento")

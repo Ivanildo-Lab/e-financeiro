@@ -43,7 +43,7 @@ def lista_clientes(request):
 @login_required
 def novo_cliente(request):
     if request.method == 'POST':
-        # Passamos papel='CLI' para o form saber que deve manter o campo Categoria
+        # Passamos papel='CLI' (campo Categoria foi removido do form)
         form = CadastroForm(request.POST, request.FILES, user=request.user, papel='CLI')
         if form.is_valid():
             obj = form.save(commit=False)
@@ -124,7 +124,7 @@ def editar_cadastro(request, id):
     rota_retorno = 'lista_fornecedores' if cadastro.papel == 'FOR' else 'lista_clientes'
 
     if request.method == 'POST':
-        # Passamos o papel atual (cadastro.papel) para manter a lógica do campo categoria
+        # Passamos o papel atual (cadastro.papel) para manter o comportamento do form
         form = CadastroForm(request.POST, request.FILES, instance=cadastro, user=request.user, papel=cadastro.papel)
         if form.is_valid():
             form.save()

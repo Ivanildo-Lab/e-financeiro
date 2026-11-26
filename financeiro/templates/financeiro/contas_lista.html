@@ -111,7 +111,7 @@
                     <!-- DATA DE PAGAMENTO (vem do lançamento da baixa) -->
                     <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-mono {% if c.status == 'PAGA' %}text-green-700 font-bold{% else %}text-gray-300{% endif %}">
                         {% if c.status == 'PAGA' %}
-                            {{ c.lancamento_caixa.data_lancamento|date:"d/m/Y"|default:"-" }}
+                            {{ c.data_pagamento|date:"d/m/Y"|default:"-" }}
                         {% else %}
                             -
                         {% endif %}
@@ -225,17 +225,22 @@
                     </select>
                 </div>
                 <div class="mt-4 text-left">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
-                    <select name="forma_pagamento" required class="w-full rounded-md border-gray-300 shadow-sm border p-2 bg-white">
-                        <option value="">-- Selecione --</option>
-                        {% for forma in formas_pagamento %}
-                            <option value="{{ forma.id }}">{{ forma.nome }}</option>
-                        {% endfor %}
-                    </select>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Forma(s) de Pagamento
+                        <span class="text-[10px] text-gray-400 font-normal">(pode usar mais de uma)</span>
+                    </label>
+                    <div id="linhasForma" class="space-y-2"></div>
+                    <button type="button" onclick="adicionarLinhaForma()" class="mt-2 text-xs font-bold text-blue-600 hover:underline">
+                        <i class="fa fa-plus"></i> Adicionar forma de pagamento
+                    </button>
+                    <div class="mt-2 flex justify-between items-center text-xs font-bold bg-gray-50 border rounded px-2 py-1.5">
+                        <span>Soma: <span id="somaFormas" class="text-gray-700">R$ 0,00</span></span>
+                        <span id="statusSoma" class="text-gray-400">—</span>
+                    </div>
                 </div>
                 <div class="flex gap-3 mt-6">
                     <button type="button" onclick="document.getElementById('modalBaixa').classList.add('hidden')" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded hover:bg-green-700 shadow">Confirmar</button>
+                    <button type="submit" id="btnConfirmarBaixa" disabled class="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded hover:bg-green-700 shadow disabled:opacity-50 disabled:cursor-not-allowed">Confirmar</button>
                 </div>
             </form>
         </div>
@@ -243,6 +248,87 @@
 </div>
 
 <script>
+    let modalTotal = 0;
+
+    // Converte valor digitado ("1.234,34", "1234,34" ou "1234.34") para número
+    function parseValorBR(s) {
+        if (s === null || s === undefined) return 0;
+        s = String(s).trim();
+        if (!s) return 0;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function formatBRL(n) {
+        return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function montarLinhaForma(valor) {
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 linha-forma';
+        div.innerHTML = `
+            <select name="forma_id" class="flex-1 min-w-0 rounded-md border-gray-300 shadow-sm border p-2 bg-white text-sm">
+                <option value="">-- Forma --</option>
+                {% for forma in formas_pagamento %}
+                <option value="{{ forma.id }}">{{ forma.nome }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="forma_valor" inputmode="decimal" placeholder="0,00"
+                   class="w-28 rounded-md border-gray-300 shadow-sm border p-2 text-sm text-right"
+                   oninput="atualizarSomaFormas()">
+            <button type="button" onclick="this.parentElement.remove(); atualizarSomaFormas();"
+                    class="px-2 text-red-500 hover:text-red-700 font-bold" title="Remover linha">&times;</button>`;
+        if (valor) div.querySelector('input').value = valor;
+        return div;
+    }
+
+    function adicionarLinhaForma() {
+        document.getElementById('linhasForma').appendChild(montarLinhaForma(''));
+        atualizarSomaFormas();
+    }
+
+    // Soma as linhas e só libera o Confirmar quando bater com o valor da parcela
+    function atualizarSomaFormas() {
+        let soma = 0;
+        let incompleta = false;
+        document.querySelectorAll('#linhasForma .linha-forma').forEach(row => {
+            const sel = row.querySelector('select');
+            const inp = row.querySelector('input');
+            const v = parseValorBR(inp.value);
+            if (v > 0 && !sel.value) incompleta = true;
+            if (sel.value && v > 0) soma += v;
+        });
+        soma = Math.round(soma * 100) / 100;
+
+        const status = document.getElementById('statusSoma');
+        const btn = document.getElementById('btnConfirmarBaixa');
+        document.getElementById('somaFormas').innerText = 'R$ ' + formatBRL(soma);
+
+        const dif = Math.round((modalTotal - soma) * 100) / 100;
+        if (incompleta) {
+            status.innerText = 'Selecione a forma de pagamento';
+            status.className = 'text-red-600';
+            btn.disabled = true;
+        } else if (soma <= 0) {
+            status.innerText = 'Informe as formas de pagamento';
+            status.className = 'text-gray-400';
+            btn.disabled = true;
+        } else if (dif === 0) {
+            status.innerText = 'Soma igual ao valor da parcela ✓';
+            status.className = 'text-green-600';
+            btn.disabled = false;
+        } else if (dif > 0) {
+            status.innerText = 'Falta R$ ' + formatBRL(dif);
+            status.className = 'text-amber-600';
+            btn.disabled = true;
+        } else {
+            status.innerText = 'Excede R$ ' + formatBRL(-dif);
+            status.className = 'text-red-600';
+            btn.disabled = true;
+        }
+    }
+
     function abrirModalBaixa(id, cliente, descricao, valor) {
         document.getElementById('modalBaixa').classList.remove('hidden');
         
@@ -256,6 +342,15 @@
         document.getElementsByName('data_pagamento')[0].value = hoje;
 
         document.getElementById('formBaixa').action = "/financeiro/contas/baixar/" + id + "/";
+
+        // Valor total da parcela (chega formatado, ex.: "1.234,34")
+        modalTotal = Math.round(parseValorBR(valor) * 100) / 100;
+
+        // Uma linha já com o valor total; Confirmar fica travado até a soma conferir
+        const linhas = document.getElementById('linhasForma');
+        linhas.innerHTML = '';
+        linhas.appendChild(montarLinhaForma(formatBRL(modalTotal)));
+        atualizarSomaFormas();
     }
     
     window.onclick = function(event) {

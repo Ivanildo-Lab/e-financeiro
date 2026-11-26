@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cadastro, CategoriaCliente, EventoVencimento
+from .models import Cadastro, EventoVencimento
 
 
 class EventoVencimentoForm(forms.ModelForm):
@@ -39,10 +39,10 @@ class CadastroForm(forms.ModelForm):
         
         super(CadastroForm, self).__init__(*args, **kwargs)
         
-        # 1. Lógica de Fornecedor (Remove Categoria)
-        if self.papel == 'FOR':
-            if 'categoria' in self.fields:
-                del self.fields['categoria']
+        # 1. Campo Categoria: obsoleto — removido do formulário de cadastro
+        #    (o valor já existente no registro é preservado na edição)
+        if 'categoria' in self.fields:
+            del self.fields['categoria']
 
         # 2. Estilização (Tailwind)
         for field_name, field in self.fields.items():
@@ -50,10 +50,6 @@ class CadastroForm(forms.ModelForm):
                 field.widget.attrs['class'] = 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
             else:
                 field.widget.attrs['class'] = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors'
-
-        # 3. Filtro de Categoria (SaaS)
-        if self.user and 'categoria' in self.fields:
-            self.fields['categoria'].queryset = CategoriaCliente.objects.filter(empresa=self.user.empresa)
 
     # --- VALIDAÇÃO DE CPF/CNPJ DUPLICADO ---
     def clean_cpf_cnpj(self):

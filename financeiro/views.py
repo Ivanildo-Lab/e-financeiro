@@ -10,7 +10,8 @@ from .models import Conta, Lancamento, Caixa, PlanoDeContas, FormaPagamento, gar
 from .forms import ContaForm, LancamentoManualForm, CaixaForm, PlanoContasForm, FormaPagamentoForm
 from core.models import ParametroSistema
 from django.db.models import Sum, Count, Q
-from decimal import Decimal
+from django.utils.formats import number_format
+from decimal import Decimal, InvalidOperation
 import calendar
 import random
 
@@ -390,56 +391,103 @@ def excluir_conta(request, id):
 @login_required
 def baixar_conta(request, id):
     conta = get_object_or_404(Conta, id=id, empresa=request.user.empresa)
-    
+    redirect_lista = 'financeiro:lista_receber' if conta.plano_de_contas.tipo == 'R' else 'financeiro:lista_pagar'
+
     if request.method == 'POST':
         caixa_id = request.POST.get('caixa')
         data_pagamento = request.POST.get('data_pagamento')
-        forma_id = request.POST.get('forma_pagamento')
-        
+        formas_ids = request.POST.getlist('forma_id')
+        formas_valores = request.POST.getlist('forma_valor')
+
         if not caixa_id or not data_pagamento:
             messages.error(request, "Preencha todos os campos da baixa.")
-            return redirect('financeiro:lista_receber' if conta.plano_de_contas.tipo == 'R' else 'financeiro:lista_pagar')
+            return redirect(redirect_lista)
 
-        if not forma_id:
-            messages.error(request, "Selecione a forma de pagamento da baixa.")
-            return redirect('financeiro:lista_receber' if conta.plano_de_contas.tipo == 'R' else 'financeiro:lista_pagar')
+        # --- Monta as linhas (forma + valor); pode ter mais de uma forma ---
+        itens = []
+        for fid, vraw in zip(formas_ids, formas_valores):
+            fid = (fid or '').strip()
+            vraw = (vraw or '').strip()
+
+            # Linha totalmente em branco é ignorada (forma não selecionada e sem valor)
+            if not fid and not vraw:
+                continue
+
+            if not fid:
+                messages.error(request, "Selecione a forma de pagamento em todas as linhas.")
+                return redirect(redirect_lista)
+
+            try:
+                valor_txt = vraw
+                if ',' in valor_txt:  # formato brasileiro: 1.234,34
+                    valor_txt = valor_txt.replace('.', '').replace(',', '.')
+                valor = Decimal(valor_txt).quantize(Decimal('0.01'))
+            except (InvalidOperation, ValueError):
+                messages.error(request, f"Valor inválido na forma de pagamento: '{vraw}'.")
+                return redirect(redirect_lista)
+
+            if valor <= 0:
+                messages.error(request, "Os valores das formas de pagamento devem ser maiores que zero.")
+                return redirect(redirect_lista)
+
+            forma = FormaPagamento.objects.filter(id=fid, empresa=request.user.empresa).first()
+            if not forma:
+                messages.error(request, "Forma de pagamento inválida.")
+                return redirect(redirect_lista)
+
+            itens.append((forma, valor))
+
+        if not itens:
+            messages.error(request, "Informe ao menos uma forma de pagamento.")
+            return redirect(redirect_lista)
+
+        # --- A soma deve ser EXATAMENTE igual ao valor da conta/parcela ---
+        soma = sum((v for _, v in itens), Decimal('0.00'))
+        esperado = conta.valor.quantize(Decimal('0.01'))
+        if soma != esperado:
+            messages.error(
+                request,
+                "A soma das formas de pagamento (R$ %s) precisa ser igual "
+                "ao valor da conta/parcela (R$ %s). Ajuste os valores para concluir a baixa."
+                % (number_format(soma), number_format(esperado)),
+            )
+            return redirect(redirect_lista)
 
         caixa = get_object_or_404(Caixa, id=caixa_id, empresa=request.user.empresa)
-        forma = get_object_or_404(FormaPagamento, id=forma_id, empresa=request.user.empresa)
 
         # Mapeia o tipo do Plano (R/D) para o tipo do Lançamento (C/D)
-        # R (Receita) -> C (Crédito)
-        # D (Despesa) -> D (Débito)
         tipo_lancamento = 'C' if conta.plano_de_contas.tipo == 'R' else 'D'
 
-        # 2) Inclui o nome do cliente/fornecedor na descrição do lançamento
+        # Inclui o nome do cliente/fornecedor na descrição do lançamento
         if conta.cadastro:
             descricao_lancamento = f"Baixa: {conta.cadastro.nome} - {conta.descricao}"
         else:
             descricao_lancamento = f"Baixa: {conta.descricao}"
 
-        Lancamento.objects.create(
-            empresa=request.user.empresa,
-            caixa=caixa,
-            plano_de_contas=conta.plano_de_contas,
-            forma_pagamento=forma,
-            conta_origem=conta,
-            descricao=descricao_lancamento,
-            data_lancamento=data_pagamento,
-            valor=conta.valor,
-            tipo=tipo_lancamento
-        )
+        # Um lançamento por forma de pagamento (totalizando o valor da parcela)
+        for forma, valor in itens:
+            Lancamento.objects.create(
+                empresa=request.user.empresa,
+                caixa=caixa,
+                plano_de_contas=conta.plano_de_contas,
+                forma_pagamento=forma,
+                conta_origem=conta,
+                descricao=descricao_lancamento,
+                data_lancamento=data_pagamento,
+                valor=valor,
+                tipo=tipo_lancamento
+            )
 
         conta.status = 'PAGA'
         conta.save()
-        
-        messages.success(request, "Baixa realizada com sucesso!")
-        
-        if conta.plano_de_contas.tipo == 'R':
-            return redirect('financeiro:lista_receber')
+
+        if len(itens) > 1:
+            messages.success(request, f"Baixa realizada com sucesso ({len(itens)} formas de pagamento)!")
         else:
-            return redirect('financeiro:lista_pagar')
-    
+            messages.success(request, "Baixa realizada com sucesso!")
+
+        return redirect(redirect_lista)
+
     return redirect('financeiro:lista_receber')
 
 
@@ -456,14 +504,15 @@ def estornar_baixa(request, id):
         messages.error(request, "Só é possível estornar contas com baixa realizada.")
         return redirect(tipo_redirect)
 
-    lancamento = Lancamento.objects.filter(empresa=request.user.empresa, conta_origem=conta).first()
-    if lancamento:
-        lancamento.delete()
+    lancamentos = Lancamento.objects.filter(empresa=request.user.empresa, conta_origem=conta)
+    qtd = lancamentos.count()
+    lancamentos.delete()
 
     conta.status = 'PENDENTE'
     conta.save()
 
-    messages.success(request, "Baixa estornada com sucesso! A conta voltou para 'Pendente'.")
+    detalhe = f" {qtd} lançamentos removidos." if qtd > 1 else ""
+    messages.success(request, f"Baixa estornada com sucesso!{detalhe} A conta voltou para 'Pendente'.")
     return redirect(tipo_redirect)
 
 
@@ -613,17 +662,19 @@ def editar_lancamento(request, id):
 @login_required
 def excluir_lancamento(request, id):
     lancamento = get_object_or_404(Lancamento, id=id, empresa=request.user.empresa)
-    
-    # Se for baixa de conta, retorna a conta para PENDENTE
+
+    # Se for baixa de conta, estorna a baixa INTEIRA (uma baixa pode ter
+    # gerado vários lançamentos, um para cada forma de pagamento)
     if lancamento.conta_origem:
         conta = lancamento.conta_origem
+        Lancamento.objects.filter(conta_origem=conta).delete()
         conta.status = 'PENDENTE'
         conta.save()
         aviso_extra = " A conta original voltou para 'Pendente'."
     else:
+        lancamento.delete()
         aviso_extra = ""
 
-    lancamento.delete()
     messages.success(request, f"Lançamento excluído.{aviso_extra}")
     return redirect('financeiro:fluxo_caixa')
 

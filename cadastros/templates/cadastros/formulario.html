@@ -64,16 +64,8 @@
                         </div>
                     </div>
                     
-                    {% if form.categoria %}
-                    <div class="md:col-span-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.categoria.label }}</label>
-                        {{ form.categoria }}
-                    </div>
-                    {% else %}
-                    <!-- Se for fornecedor, deixa um espaço vazio ou expande os outros campos -->
-                    <!-- Aqui vou deixar uma div vazia para manter o alinhamento do grid, se preferir -->
+                    <!-- Campo Categoria removido (obsoleto) — espaço mantido para alinhamento do grid -->
                     <div class="md:col-span-4"></div> 
-                    {% endif %}
                     
                     <!-- LINHA 2: NOMES -->
                     <div class="md:col-span-6">
